@@ -172,8 +172,4 @@ chmod +x test_db.sh
 
 El script verifica que todas las tablas existen, tienen datos del seed, y que INSERT/SELECT funcionan correctamente. Ver sección de resultados esperados en el mismo script.
 
----
-
-## Equipo
-
-Proyecto desarrollado para la materia de **Ingeniería de Software**.
+Documentacion realizada con apoyo de inteligencia artificial
