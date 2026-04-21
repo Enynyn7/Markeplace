@@ -1,11 +1,41 @@
 version: '3.8'
+
 services:
-  api:
+  db:
+    image: postgres:16
+    container_name: sorteos_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret123
+      POSTGRES_DB: sorteos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      # AQUÍ ESTÁ LA MAGIA CORREGIDA: Apuntando a la subcarpeta "sql"
+      - ./DataBaseImage/sql/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./DataBaseImage/sql/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d sorteos_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
     build: .
+    container_name: marketplace_api
     ports:
       - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    env_file:
-      - .env
+    environment:
+      - DB_USER=admin
+      - DB_PASSWORD=secret123
+      - DB_HOST=db
+      - DB_NAME=sorteos_db
+      - DB_PORT=5432
+    depends_on:
+      db:
+        condition: service_healthy 
+
+volumes:
+  db_data:
