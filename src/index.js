@@ -4,10 +4,13 @@ require('dotenv').config();
 require('./config/db');
 
 const app = express();
+
+// Middlewares globales
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Ruta principal
+// Ruta principal (health check)
 app.get('/', (req, res) => {
   res.json({ message: '🚀 API del Marketplace UDLAP funcionando al 100%' });
 });
@@ -34,7 +37,19 @@ app.use('/reports', require('./routes/reports'));
 app.use('/faqs', require('./routes/faqs'));
 app.use('/support-requests', require('./routes/support-requests'));
 
+// Manejo de rutas no encontradas
+app.use((req, res) => {
+  res.status(404).json({ message: 'Ruta no encontrada' });
+});
+
+// Manejo global de errores
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: 'Error interno del servidor' });
+});
+
+// Levantar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
+  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
 });
