@@ -1,14 +1,47 @@
 const express = require('express');
 const router = express.Router();
-router.get('/', (req, res) => res.json([{ id: 1, name: "Admin" }, { id: 2, name: "Estudiante" }]));
-router.post('/', (req, res) => res.status(201).json({ message: "Rol creado", data: req.body }));
-// GET por id
-router.get('/:id', (req, res) => {
-  res.json({ message: `Rol ${req.params.id} obtenido`, data: { id: req.params.id, name: 'Admin' } });
+const db = require('../config/db');
+
+router.get('/', async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM role ORDER BY id');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// DELETE
-router.delete('/:id', (req, res) => {
-  res.json({ message: `Rol ${req.params.id} eliminado` });
+router.get('/:id', async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM role WHERE id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Rol no encontrado' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
+
+router.post('/', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    const { rows } = await db.query(
+      'INSERT INTO role (name, description) VALUES ($1, $2) RETURNING *',
+      [name, description]
+    );
+    res.status(201).json({ message: 'Rol creado', data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const { rowCount } = await db.query('DELETE FROM role WHERE id = $1', [req.params.id]);
+    if (rowCount === 0) return res.status(404).json({ message: 'Rol no encontrado' });
+    res.json({ message: `Rol ${req.params.id} eliminado` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
