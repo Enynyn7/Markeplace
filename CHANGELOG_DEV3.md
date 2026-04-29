@@ -2,7 +2,7 @@
 
 ## Responsable
 - **Rol:** Developer 3
-- **Bloque:** Frontend + Integración de Historias
+- **Bloque:** Frontend
 - **Fecha:** Sprint 2
 
 ## Resumen Ejecutivo
