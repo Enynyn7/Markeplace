@@ -1,21 +1,29 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const location = useLocation()
+  const location  = useLocation()
+  const navigate  = useNavigate()
+  const { user, logout } = useAuth()
 
   const links = [
-    { to: '/home', label: 'Inicio', icon: '🏠' },
-    { to: '/dashboard', label: 'Finanzas', icon: '💰' },
+    { to: '/home',      label: 'Inicio',     icon: '🏠' },
+    { to: '/dashboard', label: 'Finanzas',   icon: '💰' },
     { to: '/marketplace', label: 'Marketplace', icon: '🛍️' },
-    { to: '/boletos', label: 'Mis Boletos', icon: '🎟️' },
-    { to: '/soporte', label: 'Ayuda', icon: '💬' },
+    { to: '/boletos',   label: 'Mis Boletos', icon: '🎟️' },
+    { to: '/soporte',   label: 'Ayuda',       icon: '💬' },
   ]
 
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/'
     return location.pathname.startsWith(path)
+  }
+
+  const handleLogout = () => {
+    logout()
+    navigate('/')
   }
 
   return (
@@ -49,6 +57,37 @@ export default function Navbar() {
               </Link>
             </li>
           ))}
+
+          {/* Usuario + logout */}
+          {user && (
+            <li style={{ listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8 }}>
+              <span
+                id="navbar-user-name"
+                style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap' }}
+              >
+                👤 {user.firstName || user.fullName || user.email}
+              </span>
+              <button
+                id="navbar-logout"
+                onClick={handleLogout}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  color: 'white',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  transition: 'background var(--transition)',
+                }}
+                onMouseOver={e => e.target.style.background = 'rgba(255,255,255,0.35)'}
+                onMouseOut={e  => e.target.style.background = 'rgba(255,255,255,0.2)'}
+              >
+                Salir
+              </button>
+            </li>
+          )}
         </ul>
       </div>
     </nav>

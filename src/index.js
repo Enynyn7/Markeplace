@@ -16,6 +16,7 @@ app.get('/', (req, res) => {
 });
 
 // Importar todas las rutas del contrato
+app.use('/auth', require('./routes/auth'));
 app.use('/roles', require('./routes/roles'));
 app.use('/users', require('./routes/users'));
 app.use('/profiles', require('./routes/profiles'));

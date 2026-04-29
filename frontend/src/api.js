@@ -89,8 +89,9 @@ export async function getUsers() {
  * Cuentas Financieras
  * Endpoint: GET /financial-accounts
  */
-export async function getFinancialAccounts() {
-  const res = await fetch(`${API_URL}/financial-accounts`);
+export async function getFinancialAccounts(userId) {
+  const url = userId ? `${API_URL}/financial-accounts?user_id=${userId}` : `${API_URL}/financial-accounts`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }

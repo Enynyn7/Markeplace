@@ -25,7 +25,7 @@ export default function PreLogin() {
           </button>
 
           <button
-            onClick={() => alert("Registro no implementado")}
+            onClick={() => navigate('/register')}
             className="btn btn--green btn--lg btn--block"
             style={{ borderRadius: 999, boxShadow: 'var(--shadow-md)' }}
           >

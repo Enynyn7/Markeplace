@@ -1,7 +1,8 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 
+import { AuthProvider, useAuth } from './context/AuthContext'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import Home from './pages/Home'
@@ -12,11 +13,20 @@ import Support from './pages/Support'
 import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import PreLogin from './pages/PreLogin'
+import Register from './pages/Register'
 
 import './index.css'
 
-// Layout con Navbar y Footer
+// Layout con Navbar y Footer (requiere autenticación)
 function AppLayout() {
+  const { isAuthenticated, loading } = useAuth()
+
+  if (loading) return null // Espera rehidratación de sesión
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />
+  }
+
   return (
     <>
       <Navbar />
@@ -28,7 +38,7 @@ function AppLayout() {
   )
 }
 
-// Layout sin Navbar (para PreLogin y Login)
+// Layout sin Navbar (PreLogin, Login, Register)
 function BlankLayout() {
   return (
     <main>
@@ -40,22 +50,27 @@ function BlankLayout() {
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route element={<BlankLayout />}>
-          <Route path="/" element={<PreLogin />} />
-          <Route path="/login" element={<Login />} />
-        </Route>
-        
-        <Route element={<AppLayout />}>
-          <Route path="/home" element={<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/boletos" element={<Tickets />} />
-          <Route path="/boletos/:id" element={<Tickets />} />
-          <Route path="/productos/:id" element={<Products />} />
-          <Route path="/soporte" element={<Support />} />
-        </Route>
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          {/* Rutas sin navbar (acceso público) */}
+          <Route element={<BlankLayout />}>
+            <Route path="/" element={<PreLogin />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Route>
+
+          {/* Rutas protegidas con navbar */}
+          <Route element={<AppLayout />}>
+            <Route path="/home" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/boletos" element={<Tickets />} />
+            <Route path="/boletos/:id" element={<Tickets />} />
+            <Route path="/productos/:id" element={<Products />} />
+            <Route path="/soporte" element={<Support />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>,
 )

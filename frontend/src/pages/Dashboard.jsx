@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getFinancialAccounts } from '../api'
 import Loader from '../components/Loader'
+import { useAuth } from '../context/AuthContext'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   
@@ -38,8 +40,9 @@ export default function Dashboard() {
   }, [])
 
   const fetchFinancialData = async () => {
+    if (!user) return;
     try {
-      const data = await getFinancialAccounts()
+      const data = await getFinancialAccounts(user.id)
       const account = Array.isArray(data) ? data[0] : data
       
       // Ajustamos el pending usando el balance de la API si existe

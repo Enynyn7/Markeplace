@@ -429,6 +429,11 @@ img { max-width: 100%; display: block; }
   color: var(--color-text-muted);
 }
 
+.input--error {
+  border-color: var(--color-red) !important;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important;
+}
+
 /* --- Info Rows --- */
 .info-row {
   display: flex;

@@ -12,6 +12,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/roles', require('./routes/roles'));
+app.use('/auth', require('./routes/auth'));
 app.use('/users', require('./routes/users'));
 app.use('/profiles', require('./routes/profiles'));
 app.use('/financial-accounts', require('./routes/financial-accounts'));
