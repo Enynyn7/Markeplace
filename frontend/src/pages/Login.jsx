@@ -34,9 +34,7 @@ export default function Login() {
         <button className="header__back" onClick={() => navigate(-1)} aria-label="Volver">
           &#8592;
         </button>
-        <button className="header__back" aria-label="Perfil">
-          👤
-        </button>
+        <div style={{ width: 40 }}></div>
       </header>
 
       {/* Contenido */}
@@ -107,6 +105,15 @@ export default function Login() {
                 required
                 autoComplete="current-password"
               />
+              <div style={{ textAlign: 'right', marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => navigate('/recover-password')}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.8125rem', cursor: 'pointer', padding: 0 }}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
             </div>
 
             <button
