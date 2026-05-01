@@ -95,3 +95,12 @@ export async function getFinancialAccounts(userId) {
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
+/**
+ * Categorías
+ * Endpoint: GET /categories
+ */
+export async function getCategories() {
+  const res = await fetch(`${API_URL}/categories`);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
