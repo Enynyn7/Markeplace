@@ -14,6 +14,10 @@ import Dashboard from './pages/Dashboard'
 import Login from './pages/Login'
 import PreLogin from './pages/PreLogin'
 import Register from './pages/Register'
+import RecoverPassword from './pages/RecoverPassword'
+import ResetPassword from './pages/ResetPassword'
+import Profile from './pages/Profile'
+import Notifications from './pages/Notifications'
 
 import './index.css'
 
@@ -57,6 +61,8 @@ createRoot(document.getElementById('root')).render(
             <Route path="/" element={<PreLogin />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/recover-password" element={<RecoverPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
           </Route>
 
           {/* Rutas protegidas con navbar */}
@@ -68,6 +74,8 @@ createRoot(document.getElementById('root')).render(
             <Route path="/boletos/:id" element={<Tickets />} />
             <Route path="/productos/:id" element={<Products />} />
             <Route path="/soporte" element={<Support />} />
+            <Route path="/perfil" element={<Profile />} />
+            <Route path="/notificaciones" element={<Notifications />} />
           </Route>
         </Routes>
       </AuthProvider>

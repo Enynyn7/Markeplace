@@ -95,3 +95,84 @@ export async function getFinancialAccounts(userId) {
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
+/**
+ * Categorías
+ * Endpoint: GET /categories
+ */
+export async function getCategories() {
+  const res = await fetch(`${API_URL}/categories`);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Movimientos Financieros
+ */
+export async function getFinancialMovements(accountId) {
+  const url = accountId ? `${API_URL}/financial-movements?account_id=${accountId}` : `${API_URL}/financial-movements`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Perfiles
+ */
+export async function getProfile(userId) {
+  const res = await fetch(`${API_URL}/profiles?user_id=${userId}`);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data) ? data[0] : data;
+}
+
+export async function updateProfile(id, data) {
+  const res = await fetch(`${API_URL}/profiles/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Notificaciones
+ */
+export async function getNotifications(userId) {
+  const res = await fetch(`${API_URL}/notifications?user_id=${userId}`);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+export async function markNotificationRead(id) {
+  const res = await fetch(`${API_URL}/notifications/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_read: true }),
+  });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Recuperación de contraseña
+ */
+export async function recoverPassword(email) {
+  const res = await fetch(`${API_URL}/auth/recover-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+export async function resetPassword(email, code, newPassword) {
+  const res = await fetch(`${API_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code, newPassword }),
+  });
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
