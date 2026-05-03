@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getNotifications, markNotificationRead } from '../api'
 import { useAuth } from '../context/AuthContext'
 import Loader from '../components/Loader'
+import Icon from '../components/Icon'
 
 export default function Notifications() {
   const { user } = useAuth()
@@ -57,7 +58,7 @@ export default function Notifications() {
       <div className="container" style={{ marginTop: 16 }}>
         {notifications.length === 0 ? (
           <div className="card fade-in" style={{ textAlign: 'center', padding: 40 }}>
-            <span style={{ fontSize: '3rem', color: '#cbd5e1' }}>🔔</span>
+            <span style={{ color: '#cbd5e1' }}><Icon name="bell" className="w-10 h-10" /></span>
             <p style={{ color: 'var(--color-text-secondary)', marginTop: 16 }}>No tienes notificaciones</p>
           </div>
         ) : (
@@ -66,7 +67,7 @@ export default function Notifications() {
               <div key={n.id} onClick={() => !n.is_read && handleMarkAsRead(n.id)} className="card fade-in" style={{ padding: 16, cursor: 'pointer', borderLeft: !n.is_read ? '4px solid var(--color-primary)' : 'none', opacity: n.is_read ? 1 : 0.7 }}>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div style={{ width: 40, height: 40, backgroundColor: '#f1f5f9', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span>🔔</span>
+                    <Icon name="bell" className="w-5 h-5" />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 
 import { AuthProvider, useAuth } from './context/AuthContext'
-import Navbar from './components/Navbar'
+import BottomNav from './components/BottomNav'
 import Footer from './components/Footer'
 import Home from './pages/Home'
 import Tickets from './pages/Tickets'
@@ -18,10 +18,15 @@ import RecoverPassword from './pages/RecoverPassword'
 import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
 import Notifications from './pages/Notifications'
+import CreateListing from './pages/CreateListing'
+import Payments from './pages/Payments'
+import MyPurchases from './pages/MyPurchases'
+import MyListings from './pages/MyListings'
+import Settings from './pages/Settings'
 
 import './index.css'
 
-// Layout con Navbar y Footer (requiere autenticación)
+// Layout principal protegido con navegación inferior fija
 function AppLayout() {
   const { isAuthenticated, loading } = useAuth()
 
@@ -33,10 +38,10 @@ function AppLayout() {
 
   return (
     <>
-      <Navbar />
       <main>
         <Outlet />
       </main>
+      <BottomNav />
       <Footer />
     </>
   )
@@ -67,9 +72,14 @@ createRoot(document.getElementById('root')).render(
 
           {/* Rutas protegidas con navbar */}
           <Route element={<AppLayout />}>
-            <Route path="/home" element={<Home />} />
+            <Route path="/home" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/marketplace/publicar" element={<CreateListing />} />
+            <Route path="/payments" element={<Payments />} />
+            <Route path="/transactions" element={<MyPurchases />} />
+            <Route path="/listings" element={<MyListings />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/boletos" element={<Tickets />} />
             <Route path="/boletos/:id" element={<Tickets />} />
             <Route path="/productos/:id" element={<Products />} />

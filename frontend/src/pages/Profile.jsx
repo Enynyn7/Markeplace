@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getProfile } from '../api'
 import Loader from '../components/Loader'
+import Icon from '../components/Icon'
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -42,25 +43,25 @@ export default function Profile() {
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <span style={{ fontSize: '3rem' }}>👤</span>
+              <Icon name="user" className="w-10 h-10" />
             )}
           </div>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{user?.fullName || 'Usuario'}</h2>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>{user?.email || 'email@udlap.mx'}</p>
-          {profile?.phone && <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginTop: 4 }}>📞 {profile.phone}</p>}
+          {profile?.phone && <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginTop: 4 }}><Icon name="phone" /> {profile.phone}</p>}
         </div>
 
         <div className="card fade-in" style={{ padding: 0, overflow: 'hidden', marginTop: 16 }}>
           {[
-            { icon: '💳', label: 'Métodos de pago', onClick: () => navigate('/payments') },
-            { icon: '🛍️', label: 'Mis publicaciones', onClick: () => navigate('/marketplace') },
-            { icon: '🛒', label: 'Mis compras', onClick: () => navigate('/transactions') },
-            { icon: '⚙️', label: 'Configuración', onClick: () => navigate('/settings') },
-            { icon: '❓', label: 'Soporte/Duda', onClick: () => navigate('/soporte') },
+            { icon: 'credit-card', label: 'Métodos de pago', onClick: () => navigate('/payments') },
+            { icon: 'bag', label: 'Mis publicaciones', onClick: () => navigate('/listings') },
+            { icon: 'bag', label: 'Mis compras', onClick: () => navigate('/transactions') },
+            { icon: 'settings', label: 'Configuración', onClick: () => navigate('/settings') },
+            { icon: 'help', label: 'Soporte/Duda', onClick: () => navigate('/soporte') },
           ].map((item, i) => (
             <div key={i} onClick={item.onClick} style={{ display: 'flex', alignItems: 'center', padding: 16, borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}>
               <div style={{ width: 40, height: 40, backgroundColor: '#f9fafb', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-                <span style={{ fontSize: '1.25rem' }}>{item.icon}</span>
+                <Icon name={item.icon} className="w-5 h-5" />
               </div>
               <span style={{ flex: 1, fontWeight: 500 }}>{item.label}</span>
               <span style={{ color: '#9ca3af', fontWeight: 'bold' }}>&#8250;</span>
@@ -68,7 +69,7 @@ export default function Profile() {
           ))}
           <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', padding: 16, cursor: 'pointer' }}>
             <div style={{ width: 40, height: 40, backgroundColor: '#fee2e2', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
-              <span style={{ fontSize: '1.25rem' }}>🚪</span>
+              <Icon name="x" />
             </div>
             <span style={{ flex: 1, fontWeight: 500, color: '#dc2626' }}>Cerrar sesión</span>
           </div>

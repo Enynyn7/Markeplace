@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import Icon from '../components/Icon'
 
 export default function Home() {
   return (
@@ -12,10 +13,10 @@ export default function Home() {
           </p>
           <div className="hero__actions">
             <Link to="/boletos" className="hero__btn--primary" id="cta-boletos">
-              🎟️ Ver Boletos
+              <Icon name="ticket" className="w-5 h-5" /> Ver Boletos
             </Link>
             <Link to="/productos" className="hero__btn--secondary" id="cta-productos">
-              🛍️ Marketplace
+              <Icon name="bag" className="w-5 h-5" /> Marketplace
             </Link>
           </div>
         </section>
@@ -26,7 +27,7 @@ export default function Home() {
           <div className="features__grid stagger">
             <Link to="/boletos" style={{ textDecoration: 'none', color: 'inherit' }}>
               <div className="card feature-card" id="feature-boletos">
-                <span className="feature-card__icon">🎟️</span>
+                <span className="feature-card__icon"><Icon name="ticket" /></span>
                 <h3 className="feature-card__title">Detalle de Boletos</h3>
                 <p className="feature-card__desc">
                   Consulta folio, comprador, evidencia de pago y estado de tus boletos.
@@ -35,7 +36,7 @@ export default function Home() {
             </Link>
             <Link to="/productos" style={{ textDecoration: 'none', color: 'inherit' }}>
               <div className="card feature-card" id="feature-productos">
-                <span className="feature-card__icon">🛍️</span>
+                <span className="feature-card__icon"><Icon name="bag" /></span>
                 <h3 className="feature-card__title">Detalle de Productos</h3>
                 <p className="feature-card__desc">
                   Explora productos con imágenes, precio y disponibilidad.
@@ -44,7 +45,7 @@ export default function Home() {
             </Link>
             <Link to="/soporte" style={{ textDecoration: 'none', color: 'inherit' }}>
               <div className="card feature-card" id="feature-soporte">
-                <span className="feature-card__icon">💬</span>
+                <span className="feature-card__icon"><Icon name="help" /></span>
                 <h3 className="feature-card__title">Soporte y FAQ</h3>
                 <p className="feature-card__desc">
                   Preguntas frecuentes y formulario de contacto directo.

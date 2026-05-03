@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getFinancialAccounts, getFinancialMovements } from '../api'
 import Loader from '../components/Loader'
+import Icon from '../components/Icon'
 import { useAuth } from '../context/AuthContext'
 
 export default function Dashboard() {
@@ -80,40 +81,42 @@ export default function Dashboard() {
   return (
     <div className="page" id="page-dashboard">
       <div className="container">
-        <header className="page-header fade-in" style={{ textAlign: 'left', marginBottom: 24 }}>
-          <h1 className="page-header__title" style={{ fontSize: '1.75rem' }}>Dashboard Financiero</h1>
-          <p className="page-header__subtitle">{user?.fullName || "Estudiante Becado"}</p>
+        <header className="header fade-in" style={{ marginBottom: 16 }}>
+          <div>
+            <h1 className="header__title">Dashboard Financiero</h1>
+            <p className="header__subtitle">{user?.fullName || "Estudiante Becado"}</p>
+          </div>
         </header>
 
         {error && (
           <div className="alert alert--error fade-in">
-            <span>⚠️</span> {error}
+            <span><Icon name="warning" className="w-4 h-4" /></span> {error}
           </div>
         )}
 
         <div className="stagger">
           {/* Overview */}
-          <div className="card" style={{ background: 'linear-gradient(135deg, #FF5722, #f4511e)', color: 'white', border: 'none' }}>
-            <p style={{ fontSize: '0.875rem', opacity: 0.9 }}>Balance Total</p>
-            <p style={{ fontSize: '2.5rem', fontWeight: 700, margin: '8px 0 16px' }}>
+          <div className="card dashboard-overview-card">
+            <p className="dashboard-overview-label">Balance Total</p>
+            <p className="dashboard-overview-amount">
               ${(financialData.tuition.pending + financialData.tickets.potentialDebt).toLocaleString('es-MX')}
             </p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+            <div className="dashboard-overview-split">
               <div>
-                <p style={{ opacity: 0.9 }}>Colegiatura pendiente</p>
-                <p style={{ fontWeight: 600 }}>${financialData.tuition.pending.toLocaleString('es-MX')}</p>
+                <p className="dashboard-overview-sub">Colegiatura pendiente</p>
+                <p className="dashboard-overview-subvalue">${financialData.tuition.pending.toLocaleString('es-MX')}</p>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ opacity: 0.9 }}>Boletos pendientes</p>
-                <p style={{ fontWeight: 600 }}>${financialData.tickets.potentialDebt.toLocaleString('es-MX')}</p>
+              <div className="dashboard-overview-right">
+                <p className="dashboard-overview-sub">Boletos pendientes</p>
+                <p className="dashboard-overview-subvalue">${financialData.tickets.potentialDebt.toLocaleString('es-MX')}</p>
               </div>
             </div>
           </div>
 
           {/* Alertas */}
           {financialData.tickets.pending > 0 && (
-            <div className="alert alert--error" style={{ background: 'var(--color-yellow-light)', borderColor: 'var(--color-yellow-border)', color: 'var(--color-yellow-text)', alignItems: 'flex-start' }}>
-              <span style={{ marginTop: 2 }}>⚠️</span>
+              <div className="alert alert--error" style={{ background: 'var(--color-yellow-light)', borderColor: 'var(--color-yellow-border)', color: 'var(--color-yellow-text)', alignItems: 'flex-start' }}>
+                <span style={{ marginTop: 2 }}><Icon name="warning" className="w-4 h-4" /></span>
               <div>
                 <strong style={{ display: 'block', marginBottom: 4 }}>¡Atención! Tienes {financialData.tickets.pending} boletos sin vender</strong>
                 <span style={{ fontSize: '0.75rem', display: 'block' }}>Fecha límite: {financialData.tickets.deadline}</span>
@@ -137,6 +140,26 @@ export default function Dashboard() {
               ${financialData.scholarship.amount.toLocaleString('es-MX')}
             </p>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>Descuento aplicado este semestre</p>
+          </div>
+
+          {/* Estado de Boletos */}
+          <div className="card">
+            <h3 style={{ fontWeight: 600, marginBottom: 12 }}>Estado de Boletos</h3>
+            <div className="tickets-stats-grid" style={{ marginBottom: 16 }}>
+              <div className="ticket-state-box ticket-state-box--sold">
+                <p className="ticket-state-box__label">Vendidos</p>
+                <p className="ticket-state-box__value">{financialData.tickets.sold}</p>
+                <p className="ticket-state-box__meta">${financialData.tickets.amountFromSales.toLocaleString('es-MX')}</p>
+              </div>
+              <div className="ticket-state-box ticket-state-box--pending">
+                <p className="ticket-state-box__label">Sin vender</p>
+                <p className="ticket-state-box__value">{financialData.tickets.pending}</p>
+                <p className="ticket-state-box__meta">${financialData.tickets.potentialDebt.toLocaleString('es-MX')}</p>
+              </div>
+            </div>
+            <button className="btn btn--green btn--block" onClick={() => navigate('/boletos')}>
+              Gestionar mis boletos
+            </button>
           </div>
 
           {/* Colegiatura */}
@@ -167,7 +190,7 @@ export default function Dashboard() {
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid #f3f4f6' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>📅 Vence: {financialData.tuition.dueDate}</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}><Icon name="calendar" className="w-4 h-4" /> Vence: {financialData.tuition.dueDate}</span>
               <button onClick={() => navigate('/payments')} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}>
                 Pagar ahora
               </button>
@@ -209,14 +232,14 @@ export default function Dashboard() {
           </div>
 
           {/* Acciones Rápidas */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-             <button className="btn btn--outline" onClick={() => navigate('/transactions')} style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-               <span style={{ fontSize: '1.5rem' }}>📄</span>
-               <span>Historial</span>
+          <div className="dashboard-quick-grid">
+             <button className="btn btn--outline dashboard-quick-btn" onClick={() => navigate('/transactions')}>
+               <Icon name="box" className="dashboard-quick-btn__icon" />
+               <span>Mis compras</span>
              </button>
-             <button className="btn btn--outline" onClick={() => navigate('/payments')} style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-               <span style={{ fontSize: '1.5rem' }}>💳</span>
-               <span>Pagos</span>
+             <button className="btn btn--outline dashboard-quick-btn" onClick={() => navigate('/payments')}>
+               <Icon name="credit-card" className="dashboard-quick-btn__icon" />
+               <span>Métodos de pago</span>
              </button>
           </div>
 

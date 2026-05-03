@@ -52,6 +52,34 @@ export async function getPosts() {
 }
 
 /**
+ * Crear publicación en marketplace
+ * Endpoint: POST /posts
+ */
+export async function createPost(data) {
+  const res = await fetch(`${API_URL}/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deletePost(id) {
+  const res = await fetch(`${API_URL}/posts/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
  * HU22 — Obtener preguntas frecuentes
  * Endpoint: GET /faqs
  */
@@ -140,6 +168,54 @@ export async function updateProfile(id, data) {
  */
 export async function getNotifications(userId) {
   const res = await fetch(`${API_URL}/notifications?user_id=${userId}`);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Métodos de pago
+ */
+export async function getPaymentMethods() {
+  const res = await fetch(`${API_URL}/payment-methods`);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+export async function createPaymentMethod(data) {
+  const res = await fetch(`${API_URL}/payment-methods`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deletePaymentMethod(id) {
+  const res = await fetch(`${API_URL}/payment-methods/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * Compras
+ */
+export async function getPurchaseOrders() {
+  const res = await fetch(`${API_URL}/purchase-orders`);
+  if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+export async function getPurchaseItems() {
+  const res = await fetch(`${API_URL}/purchase-items`);
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }

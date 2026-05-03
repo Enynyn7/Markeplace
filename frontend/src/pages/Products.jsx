@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getPostDetail } from '../api'
 import Loader from '../components/Loader'
+import Icon from '../components/Icon'
 
 export default function Products() {
   const { id } = useParams()
@@ -82,7 +83,7 @@ export default function Products() {
 
         {error && (
           <div className="alert alert--error fade-in" id="product-error">
-            <span>⚠️</span> {error}
+            <span><Icon name="warning" className="w-4 h-4" /></span> {error}
           </div>
         )}
 
@@ -94,7 +95,7 @@ export default function Products() {
               {product.images && product.images.length > 0 ? (
                 <img src={product.images[0].url} alt={product.title} />
               ) : (
-                <span>📦</span>
+                <Icon name="box" className="w-12 h-12 text-gray-300" />
               )}
             </div>
 
@@ -102,7 +103,7 @@ export default function Products() {
             <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
               <span className="badge badge--orange">Producto</span>
               {product.includes_ticket && (
-                <span className="badge badge--green">🎟️ Incluye boleto</span>
+                <span className="badge badge--green"><Icon name="ticket" className="w-3 h-3" /> Incluye boleto</span>
               )}
               {getStatusBadge(product.status)}
             </div>
@@ -116,7 +117,7 @@ export default function Products() {
             {/* Includes ticket banner */}
             {product.includes_ticket && (
               <div className="status-banner status-banner--success" style={{ marginTop: 16 }}>
-                <div className="status-banner__icon">🎟️</div>
+                <div className="status-banner__icon"><Icon name="ticket" className="w-4 h-4" /></div>
                 <div className="status-banner__text">
                   <strong style={{ color: 'var(--color-green-text)' }}>Incluye 1 boleto del Sorteo UDLAP</strong>
                   <span>Este producto incluye un boleto oficial del sorteo institucional</span>
@@ -127,7 +128,7 @@ export default function Products() {
             {/* Buy Button */}
             <div className="card" style={{ marginTop: 16, padding: 16 }}>
               <button className="btn btn--green btn--block btn--lg" id="product-buy-btn">
-                🛒 Comprar ahora
+                <Icon name="bag" className="w-4 h-4" /> Comprar ahora
               </button>
             </div>
 
@@ -140,7 +141,7 @@ export default function Products() {
                   background: '#e5e7eb', display: 'flex',
                   alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0
                 }}>
-                  👤
+                  <Icon name="user" />
                 </div>
                 <div className="icon-row__text">
                   <strong>Vendedor #{product.seller_id || product.author_user_id || 'N/A'}</strong>
@@ -180,7 +181,7 @@ export default function Products() {
         {/* Empty state */}
         {!loading && !error && !product && !id && (
           <div className="empty-state fade-in">
-            <span className="empty-state__icon">🔍</span>
+            <span className="empty-state__icon"><Icon name="search" /></span>
             <p>Ingresa un ID de producto para consultar su detalle</p>
             <p style={{ fontSize: '0.75rem', marginTop: 8, color: 'var(--color-text-muted)' }}>
               Nota: El endpoint actualmente devuelve datos mock

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getFAQs, submitSupportRequest } from '../api'
 import Loader from '../components/Loader'
+import Icon from '../components/Icon'
 
 function AccordionItem({ faq }) {
   const [open, setOpen] = useState(false)
@@ -87,7 +88,7 @@ export default function Support() {
           <h2 className="card__title" style={{ marginBottom: 16 }}>Contacto rápido</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <a href="mailto:soporte@udlap.mx" className="icon-row" style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="icon-row__icon icon-row__icon--orange">📧</div>
+              <div className="icon-row__icon icon-row__icon--orange"><Icon name="mail" /></div>
               <div className="icon-row__text">
                 <strong>Email</strong>
                 <span>soporte@udlap.mx</span>
@@ -95,7 +96,7 @@ export default function Support() {
             </a>
 
             <a href="tel:+525512345678" className="icon-row" style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="icon-row__icon icon-row__icon--green">📞</div>
+              <div className="icon-row__icon icon-row__icon--green"><Icon name="phone" /></div>
               <div className="icon-row__text">
                 <strong>Teléfono</strong>
                 <span>+52 55 1234 5678</span>
@@ -103,7 +104,7 @@ export default function Support() {
             </a>
 
             <button className="icon-row" onClick={() => alert("Chat en vivo próximamente")} style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', padding: 12 }}>
-              <div className="icon-row__icon icon-row__icon--blue">💬</div>
+              <div className="icon-row__icon icon-row__icon--blue"><Icon name="help" /></div>
               <div className="icon-row__text">
                 <strong>Chat en vivo</strong>
                 <span>Disponible 9:00 - 18:00</span>
@@ -167,7 +168,7 @@ export default function Support() {
               id="support-submit-btn"
               style={{ marginTop: 8 }}
             >
-              {submitting ? '⏳ Enviando...' : 'Enviar mensaje'}
+              {submitting ? <><Icon name="clock" /> Enviando...</> : 'Enviar mensaje'}
             </button>
           </form>
 
@@ -177,7 +178,7 @@ export default function Support() {
               style={{ marginTop: '16px' }}
               id="support-result"
             >
-              <span>{submitResult.type === 'success' ? '✅' : '⚠️'}</span>
+              <span>{submitResult.type === 'success' ? <Icon name="check" /> : <Icon name="warning" />}</span>
               {submitResult.message}
             </div>
           )}
@@ -186,7 +187,7 @@ export default function Support() {
         {/* FAQs - Figma Style */}
         <div className="card fade-in">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <span style={{ fontSize: '1.25rem' }}>❓</span>
+            <span style={{ fontSize: '1.25rem' }}><Icon name="help" /></span>
             <h2 className="card__title">Preguntas frecuentes</h2>
           </div>
 
@@ -194,13 +195,13 @@ export default function Support() {
 
           {faqError && (
             <div className="alert alert--error" id="faq-error">
-              <span>⚠️</span> {faqError}
+              <span><Icon name="warning" className="w-4 h-4" /></span> {faqError}
             </div>
           )}
 
           {!loadingFaqs && !faqError && faqs.length === 0 && (
             <div className="empty-state">
-              <span className="empty-state__icon">📭</span>
+              <span className="empty-state__icon"><Icon name="box" /></span>
               <p>No hay preguntas frecuentes disponibles</p>
             </div>
           )}

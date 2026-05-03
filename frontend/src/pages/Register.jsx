@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Icon from '../components/Icon'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -67,9 +68,9 @@ export default function Register() {
   if (success) {
     return (
       <div id="page-register-success" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)', padding: '24px' }}>
-        <div className="card fade-in" style={{ textAlign: 'center', padding: 40, maxWidth: 380 }}>
+          <div className="card fade-in" style={{ textAlign: 'center', padding: 40, maxWidth: 380 }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--color-green-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '2rem' }}>
-            ✅
+            <Icon name="check" />
           </div>
           <h2 style={{ fontWeight: 700, fontSize: '1.5rem', marginBottom: 8 }}>¡Cuenta creada!</h2>
           <p style={{ color: 'var(--color-text-secondary)', marginBottom: 24 }}>
@@ -99,7 +100,7 @@ export default function Register() {
         {/* Ícono de avatar */}
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', fontSize: '2rem', color: 'white' }}>
-            👤
+            <Icon name="user" />
           </div>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginTop: 12 }}>
             Únete al Marketplace UDLAP
@@ -111,7 +112,7 @@ export default function Register() {
           {/* Error de API */}
           {apiError && (
             <div className="alert alert--error fade-in" id="register-api-error" style={{ marginBottom: 16 }}>
-              <span>⚠️</span>
+              <span><Icon name="warning" className="w-4 h-4" /></span>
               <span>{apiError}</span>
             </div>
           )}

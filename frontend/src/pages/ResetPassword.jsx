@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { resetPassword } from '../api'
+import Icon from '../components/Icon'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -40,8 +41,8 @@ export default function ResetPassword() {
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: 20 }}>
             Ingresa el código que te enviamos y tu nueva contraseña.
           </p>
-          {error && <div className="alert alert--error fade-in" style={{ marginBottom: 16 }}><span>⚠️</span> {error}</div>}
-          {success && <div className="alert alert--success fade-in" style={{ marginBottom: 16 }}><span>✅</span> Contraseña actualizada. Redirigiendo...</div>}
+          {error && <div className="alert alert--error fade-in" style={{ marginBottom: 16 }}><span><Icon name="warning" className="w-4 h-4" /></span> {error}</div>}
+          {success && <div className="alert alert--success fade-in" style={{ marginBottom: 16 }}><span><Icon name="check" /></span> Contraseña actualizada. Redirigiendo...</div>}
           <form onSubmit={handleSubmit} className="form">
             <div className="input-group">
               <label htmlFor="reset-email">Email</label>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Icon from '../components/Icon'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -59,7 +60,7 @@ export default function Login() {
           {/* Mensaje de error */}
           {error && (
             <div className="alert alert--error fade-in" id="login-error" style={{ marginBottom: 16 }}>
-              <span>⚠️</span>
+              <span><Icon name="warning" className="w-4 h-4" /></span>
               <div>
                 <strong style={{ display: 'block' }}>{error}</strong>
                 {error.toLowerCase().includes('credenciales') && (
