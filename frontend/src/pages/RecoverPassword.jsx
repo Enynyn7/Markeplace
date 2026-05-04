@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Icon from '../components/Icon'
 import { useNavigate } from 'react-router-dom'
 import { recoverPassword } from '../api'
 
@@ -33,7 +34,7 @@ export default function RecoverPassword() {
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: 20 }}>
             Ingresa tu correo para recibir un código de recuperación.
           </p>
-          {error && <div className="alert alert--error fade-in" style={{ marginBottom: 16 }}><span>⚠️</span> {error}</div>}
+          {error && <div className="alert alert--error fade-in" style={{ marginBottom: 16 }}><span><Icon name="warning" className="w-4 h-4" /></span> {error}</div>}
           <form onSubmit={handleSubmit} className="form">
             <div className="input-group">
               <label htmlFor="recover-email">Email</label>

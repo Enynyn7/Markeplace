@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Icon from './Icon'
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -9,17 +10,13 @@ export default function Navbar() {
   const { user, logout } = useAuth()
 
   const links = [
-    { to: '/home', label: 'Inicio', icon: '🏠' },
-    { to: '/dashboard', label: 'Finanzas', icon: '💰' },
-    { to: '/marketplace', label: 'Marketplace', icon: '🛍️' },
-    { to: '/boletos', label: 'Mis Boletos', icon: '🎟️' },
-    { to: '/soporte', label: 'Ayuda', icon: '💬' },
+    { to: '/dashboard', label: 'Inicio', icon: 'home' },
+    { to: '/dashboard', label: 'Finanzas', icon: 'dollar' },
+    { to: '/marketplace', label: 'Marketplace', icon: 'bag' },
+    { to: '/boletos', label: 'Boletos', icon: 'ticket' },
   ]
 
-  const isActive = (path) => {
-    if (path === '/') return location.pathname === '/'
-    return location.pathname.startsWith(path)
-  }
+  const isActive = (path) => location.pathname.startsWith(path)
 
   const handleLogout = () => {
     logout()
@@ -29,8 +26,8 @@ export default function Navbar() {
   return (
     <nav className="navbar" id="main-navbar">
       <div className="navbar__inner">
-        <Link to="/" className="navbar__logo">
-          <span className="navbar__logo-icon">🎰</span>
+        <Link to="/dashboard" className="navbar__logo">
+          <span className="navbar__logo-icon"><Icon name="ticket" className="w-5 h-5" /></span>
           <span>Marketplace UDLAP</span>
         </Link>
 
@@ -40,7 +37,7 @@ export default function Navbar() {
           aria-label="Toggle menu"
           id="navbar-toggle"
         >
-          {menuOpen ? '✕' : '☰'}
+          {menuOpen ? <Icon name="x" className="w-5 h-5" /> : <Icon name="menu" className="w-5 h-5" />}
         </button>
 
         <ul className={`navbar__links ${menuOpen ? 'open' : ''}`}>
@@ -50,47 +47,40 @@ export default function Navbar() {
                 to={link.to}
                 className={`navbar__link ${isActive(link.to) ? 'active' : ''}`}
                 onClick={() => setMenuOpen(false)}
-                id={`nav-link-${link.to.replace('/', '') || 'home'}`}
+                id={`nav-link-${link.to.replace('/', '') || 'dashboard'}`}
               >
-                <span>{link.icon}</span>
-                {link.label}
+                <Icon name={link.icon} className="w-4 h-4" />
+                <span>{link.label}</span>
               </Link>
             </li>
           ))}
 
           {/* Usuario + notificaciones + perfil + logout */}
-          {user && (
+          {user ? (
             <li style={{ listStyle: 'none', display: 'flex', alignItems: 'center', gap: 12, marginLeft: 8 }}>
-              <Link to="/notificaciones" aria-label="Notificaciones" style={{ textDecoration: 'none', fontSize: '1.25rem' }}>
-                🔔
+              <Link to="/notificaciones" aria-label="Notificaciones" style={{ textDecoration: 'none', fontSize: '1.25rem', color: 'white' }}>
+                <Icon name="bell" className="w-5 h-5" />
               </Link>
-              <Link 
+              <Link
                 to="/perfil"
                 id="navbar-user-name"
-                style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.9)', whiteSpace: 'nowrap', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.95)', whiteSpace: 'nowrap', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
               >
-                <span>👤</span>
+                <Icon name="user" className="w-4 h-4" />
                 <span>{user.firstName || user.fullName || user.email}</span>
               </Link>
               <button
                 id="navbar-logout"
                 onClick={handleLogout}
-                style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  border: 'none',
-                  color: 'white',
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  transition: 'background var(--transition)',
-                }}
-                onMouseOver={e => e.target.style.background = 'rgba(255,255,255,0.35)'}
-                onMouseOut={e => e.target.style.background = 'rgba(255,255,255,0.2)'}
+                className="btn"
+                style={{ padding: '6px 10px', background: 'rgba(255,255,255,0.12)', color: 'white', borderRadius: 'var(--radius-md)', fontSize: '0.875rem' }}
               >
                 Salir
               </button>
+            </li>
+          ) : (
+            <li style={{ listStyle: 'none', marginLeft: 8 }}>
+              <Link to="/login" className="navbar__link" id="nav-link-login">Ingresar</Link>
             </li>
           )}
         </ul>
