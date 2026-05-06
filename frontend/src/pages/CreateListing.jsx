@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createPost, getCategories } from '../api'
+import { createPost, createPostImage, getCategories } from '../api'
 import { useAuth } from '../context/AuthContext'
 import Icon from '../components/Icon'
 
@@ -11,6 +11,16 @@ function slugify(text) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
+}
+
+function isValidImageUrl(value) {
+  if (!value) return true
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol)
+  } catch {
+    return false
+  }
 }
 
 export default function CreateListing() {
@@ -25,6 +35,8 @@ export default function CreateListing() {
   const [form, setForm] = useState({
     title: '',
     categoryId: '',
+    price: '',
+    imageUrl: '',
     description: '',
     status: 'published',
   })
@@ -45,7 +57,16 @@ export default function CreateListing() {
   }, [])
 
   const canSubmit = useMemo(() => {
-    return Boolean(user?.id && form.title.trim() && form.categoryId)
+    const price = Number(form.price)
+    return Boolean(
+      user?.id &&
+      form.title.trim() &&
+      form.categoryId &&
+      form.price !== '' &&
+      Number.isFinite(price) &&
+      price >= 0 &&
+      isValidImageUrl(form.imageUrl.trim())
+    )
   }, [user, form])
 
   const onChange = (key) => (e) => {
@@ -64,19 +85,46 @@ export default function CreateListing() {
     try {
       const now = Date.now()
       const slugBase = slugify(form.title) || 'publicacion'
+      const categoryId = Number(form.categoryId)
+
+      if (!categoryId) {
+        throw new Error('Selecciona una categoría válida')
+      }
+
+      const price = Number(form.price)
+      if (form.price === '' || !Number.isFinite(price) || price < 0) {
+        throw new Error('Ingresa un precio valido')
+      }
+
+      const imageUrl = form.imageUrl.trim()
+      if (!isValidImageUrl(imageUrl)) {
+        throw new Error('Ingresa una URL de imagen valida')
+      }
+
       const payload = {
-        category_id: Number(form.categoryId),
+        category_id: categoryId,
         author_user_id: Number(user.id),
         title: form.title.trim(),
         slug: `${slugBase}-${now}`,
         content: form.description.trim() || null,
+        price,
         status: form.status,
         published_at: form.status === 'published' ? new Date().toISOString() : null,
       }
 
-      await createPost(payload)
+      const created = await createPost(payload)
+      const post = created.data || created
+
+      if (imageUrl) {
+        await createPostImage({
+          post_id: post.id,
+          url: imageUrl,
+          alt_text: form.title.trim(),
+          sort_order: 0,
+        })
+      }
       setSuccess('Publicación creada correctamente')
-      setTimeout(() => navigate('/marketplace'), 800)
+      setTimeout(() => navigate('/app/marketplace'), 800)
     } catch (err) {
       setError(err.message || 'No se pudo crear la publicación')
     } finally {
@@ -88,7 +136,7 @@ export default function CreateListing() {
     <div className="page" id="page-create-listing">
       <div className="container">
         <header className="header fade-in" style={{ marginBottom: 12, justifyContent: 'space-between' }}>
-          <button className="header__back" onClick={() => navigate('/marketplace')} aria-label="Volver">
+          <button className="header__back" onClick={() => navigate('/app/marketplace')} aria-label="Volver">
             <Icon name="chevron-left" className="w-5 h-5" />
           </button>
           <h1 className="header__title">Publicar en Marketplace</h1>
@@ -142,6 +190,38 @@ export default function CreateListing() {
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="listing-price">Precio</label>
+              <input
+                id="listing-price"
+                className="input"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.price}
+                onChange={onChange('price')}
+                placeholder="Ej: 99.99"
+                required
+              />
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="listing-image-url">Imagen por URL</label>
+              <input
+                id="listing-image-url"
+                className="input"
+                type="url"
+                value={form.imageUrl}
+                onChange={onChange('imageUrl')}
+                placeholder="https://ejemplo.com/imagen.jpg"
+              />
+              {form.imageUrl && isValidImageUrl(form.imageUrl.trim()) && (
+                <div className="product-detail__image-wrapper" style={{ marginTop: 10, marginBottom: 0 }}>
+                  <img src={form.imageUrl.trim()} alt="Vista previa" />
+                </div>
+              )}
             </div>
 
             <div className="input-group">

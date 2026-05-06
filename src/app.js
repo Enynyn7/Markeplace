@@ -1,11 +1,19 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-require('./config/db');
+const db = require('./config/db');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(async (req, res, next) => {
+  try {
+    await db.ready;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get('/', (req, res) => {
   res.json({ message: '🚀 API del Marketplace UDLAP funcionando al 100%' });

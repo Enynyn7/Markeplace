@@ -10,10 +10,10 @@ export default function Navbar() {
   const { user, logout } = useAuth()
 
   const links = [
-    { to: '/dashboard', label: 'Inicio', icon: 'home' },
-    { to: '/dashboard', label: 'Finanzas', icon: 'dollar' },
-    { to: '/marketplace', label: 'Marketplace', icon: 'bag' },
-    { to: '/boletos', label: 'Boletos', icon: 'ticket' },
+    { to: '/app', label: 'Inicio', icon: 'home' },
+    { to: '/app', label: 'Finanzas', icon: 'dollar' },
+    { to: '/app/marketplace', label: 'Marketplace', icon: 'bag' },
+    { to: '/app/tickets', label: 'Boletos', icon: 'ticket' },
   ]
 
   const isActive = (path) => location.pathname.startsWith(path)
@@ -26,7 +26,7 @@ export default function Navbar() {
   return (
     <nav className="navbar" id="main-navbar">
       <div className="navbar__inner">
-        <Link to="/dashboard" className="navbar__logo">
+        <Link to="/app" className="navbar__logo">
           <span className="navbar__logo-icon"><Icon name="ticket" className="w-5 h-5" /></span>
           <span>Marketplace UDLAP</span>
         </Link>

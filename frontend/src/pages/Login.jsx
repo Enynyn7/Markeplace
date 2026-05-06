@@ -19,7 +19,7 @@ export default function Login() {
 
     try {
       await login(email, password)
-      navigate('/home')
+      navigate('/app')
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión')
     } finally {

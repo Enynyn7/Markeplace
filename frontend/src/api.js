@@ -5,6 +5,11 @@
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+async function parseApiError(res) {
+  const error = await res.json().catch(() => ({}));
+  return new Error(error.message || error.error || `Error ${res.status}`);
+}
+
 /**
  * HU5 — Obtener detalle de un boleto por ID
  * Endpoint: GET /tickets/:id
@@ -22,8 +27,9 @@ export async function getTicketDetail(id) {
  * HU5 — Obtener lista de todos los boletos
  * Endpoint: GET /tickets
  */
-export async function getTickets() {
-  const res = await fetch(`${API_URL}/tickets`);
+export async function getTickets(userId) {
+  const url = userId ? `${API_URL}/tickets?user_id=${userId}` : `${API_URL}/tickets`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
@@ -35,8 +41,7 @@ export async function getTickets() {
 export async function getPostDetail(id) {
   const res = await fetch(`${API_URL}/posts/${id}`);
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Error ${res.status}`);
+    throw await parseApiError(res);
   }
   return res.json();
 }
@@ -62,8 +67,19 @@ export async function createPost(data) {
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Error ${res.status}`);
+    throw await parseApiError(res);
+  }
+  return res.json();
+}
+
+export async function createPostImage(data) {
+  const res = await fetch(`${API_URL}/post-images`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw await parseApiError(res);
   }
   return res.json();
 }
@@ -73,8 +89,7 @@ export async function deletePost(id) {
     method: 'DELETE',
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Error ${res.status}`);
+    throw await parseApiError(res);
   }
   return res.json();
 }
@@ -136,8 +151,11 @@ export async function getCategories() {
 /**
  * Movimientos Financieros
  */
-export async function getFinancialMovements(accountId) {
-  const url = accountId ? `${API_URL}/financial-movements?account_id=${accountId}` : `${API_URL}/financial-movements`;
+export async function getFinancialMovements(accountId, userId) {
+  const params = new URLSearchParams();
+  if (accountId) params.set('account_id', accountId);
+  if (userId) params.set('user_id', userId);
+  const url = params.toString() ? `${API_URL}/financial-movements?${params}` : `${API_URL}/financial-movements`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
@@ -175,8 +193,9 @@ export async function getNotifications(userId) {
 /**
  * Métodos de pago
  */
-export async function getPaymentMethods() {
-  const res = await fetch(`${API_URL}/payment-methods`);
+export async function getPaymentMethods(userId) {
+  const url = userId ? `${API_URL}/payment-methods?user_id=${userId}` : `${API_URL}/payment-methods`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
@@ -188,8 +207,7 @@ export async function createPaymentMethod(data) {
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Error ${res.status}`);
+    throw await parseApiError(res);
   }
   return res.json();
 }
@@ -199,8 +217,7 @@ export async function deletePaymentMethod(id) {
     method: 'DELETE',
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || `Error ${res.status}`);
+    throw await parseApiError(res);
   }
   return res.json();
 }
@@ -208,15 +225,53 @@ export async function deletePaymentMethod(id) {
 /**
  * Compras
  */
-export async function getPurchaseOrders() {
-  const res = await fetch(`${API_URL}/purchase-orders`);
+export async function getPurchaseOrders(userId) {
+  const url = userId ? `${API_URL}/purchase-orders?user_id=${userId}` : `${API_URL}/purchase-orders`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
 
-export async function getPurchaseItems() {
-  const res = await fetch(`${API_URL}/purchase-items`);
+export async function getPurchaseItems(purchaseOrderId) {
+  const url = purchaseOrderId ? `${API_URL}/purchase-items?purchase_order_id=${purchaseOrderId}` : `${API_URL}/purchase-items`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`Error ${res.status}`);
+  return res.json();
+}
+
+export async function createPurchaseOrder(data) {
+  const res = await fetch(`${API_URL}/purchase-orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw await parseApiError(res);
+  }
+  return res.json();
+}
+
+export async function updatePurchaseOrder(id, data) {
+  const res = await fetch(`${API_URL}/purchase-orders/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw await parseApiError(res);
+  }
+  return res.json();
+}
+
+export async function createPurchaseItem(data) {
+  const res = await fetch(`${API_URL}/purchase-items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw await parseApiError(res);
+  }
   return res.json();
 }
 

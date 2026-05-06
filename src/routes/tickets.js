@@ -41,12 +41,54 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ----------------------------------------------------------------------
-// Las rutas de aquí abajo siguen siendo Mocks por ahora
-// ----------------------------------------------------------------------
-const mockTicket = { id: 4, owner_id: 2, is_sold: false, price: 500 };
-router.get('/', (req, res) => res.json([mockTicket]));
-router.post('/', (req, res) => res.status(201).json({ message: "Ticket asignado", data: req.body }));
+router.get('/', async (req, res) => {
+  try {
+    const { user_id } = req.query;
+
+    let query = `
+      SELECT DISTINCT ON (lt.id)
+        lt.id AS ticket_id,
+        lt.user_id,
+        lt.event_id,
+        lt.subject AS folio,
+        lt.description,
+        lt.status AS estado_boleto,
+        lt.created_at,
+        lt.updated_at,
+        ts.id AS ticket_sale_id,
+        ts.buyer_user_id,
+        ts.price,
+        ts.currency,
+        ts.status AS estado_venta,
+        p.first_name || ' ' || p.last_name AS nombre_comprador,
+        tpe.file_url AS evidencia_pago_url,
+        tpe.status AS estado_evidencia
+      FROM lottery_ticket lt
+      LEFT JOIN ticket_sale ts ON lt.id = ts.ticket_id
+      LEFT JOIN profile p ON ts.buyer_user_id = p.user_id
+      LEFT JOIN ticket_payment_evidence tpe ON ts.id = tpe.ticket_sale_id
+    `;
+
+    const params = [];
+
+    if (user_id) {
+      params.push(user_id);
+      query += ' WHERE lt.user_id = $1 ';
+    }
+
+    query += `
+      ORDER BY lt.id, tpe.submitted_at DESC NULLS LAST, ts.updated_at DESC NULLS LAST
+    `;
+
+    const { rows } = await db.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al consultar los boletos:', error);
+    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
+  }
+});
+
+router.post('/', (req, res) => res.status(201).json({ message: 'Ticket asignado', data: req.body }));
 router.put('/:id', (req, res) => res.json({ message: `Ticket ${req.params.id} actualizado` }));
 router.delete('/:id', (req, res) => res.json({ message: `Ticket ${req.params.id} eliminado` }));
 

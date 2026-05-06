@@ -4,12 +4,15 @@ const db = require('../config/db');
 
 router.get('/', async (req, res) => {
   try {
-    const { account_id } = req.query;
+    const { account_id, user_id } = req.query;
     let query = 'SELECT * FROM transaction';
     let params = [];
     if (account_id) {
       query += ' WHERE financial_account_id = $1';
       params.push(account_id);
+    } else if (user_id) {
+      query += ' WHERE user_id = $1';
+      params.push(user_id);
     }
     query += ' ORDER BY created_at DESC';
     

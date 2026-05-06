@@ -19,6 +19,10 @@ function getStatusBadge(status) {
   return <span className={`badge ${info.cls}`}>{info.label}</span>
 }
 
+function isSoldStatus(status) {
+  return ['completed', 'sold', 'approved', 'completado'].includes(String(status || '').toLowerCase())
+}
+
 export default function Tickets() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -62,14 +66,9 @@ export default function Tickets() {
     setLoading(true)
     setError(null)
     try {
-      const res = await getTickets()
+      const res = await getTickets(user?.id)
       const parsed = res.data !== undefined ? res.data : res
-      // Si tenemos usuario, filtrar por vendedor/autor; si no, mostrar todo
-      let list = Array.isArray(parsed) ? parsed : [parsed]
-      if (user && (list.length > 0)) {
-        list = list.filter(t => String(t.seller_id) === String(user.id) || String(t.author_user_id) === String(user.id))
-      }
-      setTicketsList(list)
+      setTicketsList(Array.isArray(parsed) ? parsed : [])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -80,17 +79,17 @@ export default function Tickets() {
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchId.trim()) {
-      navigate(`/boletos/${searchId.trim()}`)
+      navigate(`/app/tickets/${searchId.trim()}`)
     }
   }
 
-  const soldCount = ticketsList.filter(t => t.estado_venta === 'completed').length
-  const pendingCount = ticketsList.filter(t => t.estado_venta !== 'completed').length
+  const soldCount = ticketsList.filter(t => isSoldStatus(t.estado_venta)).length
+  const pendingCount = ticketsList.filter(t => !isSoldStatus(t.estado_venta)).length
   const amountPaid = ticketsList
-    .filter(t => t.estado_venta === 'completed')
+    .filter(t => isSoldStatus(t.estado_venta))
     .reduce((acc, t) => acc + Number(t.amount || t.price || 0), 0)
   const amountOwed = ticketsList
-    .filter(t => t.estado_venta !== 'completed')
+    .filter(t => !isSoldStatus(t.estado_venta))
     .reduce((acc, t) => acc + Number(t.amount || t.price || 0), 0)
 
   return (
@@ -267,7 +266,7 @@ export default function Tickets() {
               <div className="space-y-3 mb-4">
                 <h3 className="font-semibold text-gray-700">Boletos Vendidos</h3>
                 {ticketsList.map(t => (
-                  <div key={t.id || t.ticket_id} onClick={() => navigate(`/boletos/${t.id || t.ticket_id}`)} className="ticket-list-card cursor-pointer">
+                  <div key={t.id || t.ticket_id} onClick={() => navigate(`/app/tickets/${t.id || t.ticket_id}`)} className="ticket-list-card cursor-pointer">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -288,7 +287,7 @@ export default function Tickets() {
               </div>
             )}
             <div className="mt-4">
-              <button onClick={() => navigate('/marketplace/publicar')} className="btn btn--green btn--block">
+              <button onClick={() => navigate('/app/listings/create')} className="btn btn--green btn--block">
                 Publicar en Marketplace
               </button>
             </div>

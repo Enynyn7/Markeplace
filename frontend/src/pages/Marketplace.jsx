@@ -14,7 +14,7 @@ export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedStatus, setSelectedStatus] = useState("")
-  const [priceRange, setPriceRange] = useState({ min: 10, max: 10000 })
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 })
 
   useEffect(() => {
     fetchMarketplaceData()
@@ -48,9 +48,8 @@ export default function Marketplace() {
       post?.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post?.description?.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const postCategoryName = getCategoryName(post.category_id)
     const matchesCategory =
-      selectedCategory === "" || String(postCategoryName).toLowerCase() === String(selectedCategory).toLowerCase()
+      selectedCategory === "" || String(post.category_id) === String(selectedCategory)
 
     const matchesStatus =
       selectedStatus === "" || String(post.status).toLowerCase() === selectedStatus.toLowerCase()
@@ -104,7 +103,7 @@ export default function Marketplace() {
             <div className="market-filters">
               <FilterSection categories={categories} onApply={({ category, minPrice, maxPrice }) => {
                 setSelectedCategory(category || '')
-                setPriceRange({ min: Number(minPrice || 10), max: Number(maxPrice || 10000) })
+                setPriceRange({ min: Number(minPrice ?? 0), max: Number(maxPrice || 10000) })
               }} initialCategory={selectedCategory} initialMin={priceRange.min} initialMax={priceRange.max} />
             </div>
 
@@ -122,6 +121,7 @@ export default function Marketplace() {
                     <TicketCard
                       key={post.id}
                       id={post.id}
+                      listing={post}
                       title={post.title}
                       price={post.price ?? post.amount ?? 0}
                       includesTicket={post.includes_ticket}

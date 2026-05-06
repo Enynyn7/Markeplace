@@ -373,7 +373,8 @@ VALUES (1, 'main', 'MXN', 50000.00),
     (2, 'revenue', 'MXN', 12500.00),
     (3, 'wallet', 'MXN', 350.00),
     (4, 'wallet', 'MXN', 200.00),
-    (5, 'wallet', 'MXN', 50.00);
+    (5, 'wallet', 'MXN', 50.00),
+    (6, 'wallet', 'MXN', 0.00);
 
 -- -------------------------------------------------------------
 -- 11. TRANSACTION
@@ -490,24 +491,24 @@ VALUES (
 INSERT INTO
     category (name, slug, description)
 VALUES (
-        'Noticias',
-        'noticias',
-        'Novedades y actualizaciones del sistema'
+        'Producto',
+        'producto',
+        'Artículos físicos publicados en el marketplace'
     ),
     (
-        'Ganadores',
-        'ganadores',
-        'Publicaciones de resultados y premios'
+        'Servicio',
+        'servicio',
+        'Servicios ofrecidos por la comunidad'
     ),
     (
-        'Eventos',
-        'eventos',
-        'Información sobre próximos sorteos'
+        'Boleto',
+        'boleto',
+        'Boletos o publicaciones relacionadas con sorteos'
     ),
     (
-        'Comunidad',
-        'comunidad',
-        'Historias y participación de usuarios'
+        'Otro',
+        'otro',
+        'Publicaciones que no encajan en otra categoría'
     );
 
 -- -------------------------------------------------------------
@@ -520,6 +521,7 @@ INSERT INTO
         title,
         slug,
         content,
+        price,
         status,
         published_at
     )
@@ -529,6 +531,7 @@ VALUES (
         'Resultados del Sorteo Navideño 2024',
         'resultados-sorteo-navideno-2024',
         'El pasado 24 de diciembre se llevó a cabo el Gran Sorteo Navideño 2024. El boleto ganador fue el #347.',
+        250.00,
         'published',
         NOW() - INTERVAL '3 months'
     ),
@@ -538,6 +541,7 @@ VALUES (
         'Todo lo que necesitas saber sobre el Sorteo Navideño 2025',
         'sorteo-navideno-2025-info',
         'Este año el sorteo se realizará en el Auditorio Nacional. Los boletos ya están disponibles.',
+        150.00,
         'published',
         NOW() - INTERVAL '7 days'
     ),
@@ -547,6 +551,7 @@ VALUES (
         'Nueva plataforma de pagos disponible',
         'nueva-plataforma-pagos',
         'Hemos integrado pagos con tarjeta de crédito y débito para facilitar la compra de boletos.',
+        75.00,
         'draft',
         NULL
     ),
@@ -556,6 +561,7 @@ VALUES (
         'Ana García comparte su experiencia como ganadora',
         'testimonio-ana-garcia',
         'Ana ganó el tercer lugar en la Rifa Benéfica Primavera y nos contó cómo fue su experiencia.',
+        120.00,
         'published',
         NOW() - INTERVAL '1 month'
     );
@@ -739,3 +745,4 @@ VALUES (
         4,
         TRUE
     );
+

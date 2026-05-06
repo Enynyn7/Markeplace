@@ -1,25 +1,32 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { getPostDetail } from '../api'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { createPurchaseItem, createPurchaseOrder, getPaymentMethods, getPostDetail, updatePurchaseOrder } from '../api'
+import { useAuth } from '../context/AuthContext'
 import Loader from '../components/Loader'
 import Icon from '../components/Icon'
 
 export default function Products() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useAuth()
   const [searchId, setSearchId] = useState(id || '')
-  const [product, setProduct] = useState(null)
+  const [product, setProduct] = useState(location.state?.product || null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [buying, setBuying] = useState(false)
+  const isOwnProduct = user?.id && product?.author_user_id && String(user.id) === String(product.author_user_id)
 
   const fetchProduct = async (productId) => {
     if (!productId) return
     setLoading(true)
     setError(null)
-    setProduct(null)
+    if (String(location.state?.product?.id) !== String(productId)) {
+      setProduct(null)
+    }
     try {
       const result = await getPostDetail(productId)
-      setProduct(result.data)
+      setProduct(result.data !== undefined ? result.data : result)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -37,7 +44,77 @@ export default function Products() {
   const handleSearch = (e) => {
     e.preventDefault()
     if (searchId.trim()) {
-      navigate(`/productos/${searchId.trim()}`)
+      navigate(`/app/products/${searchId.trim()}`)
+    }
+  }
+
+  const normalizeImages = (images) => {
+    if (!Array.isArray(images)) return []
+    return images
+      .map((image) => {
+        if (!image) return null
+        if (typeof image === 'string') return image
+        return image.url || null
+      })
+      .filter(Boolean)
+  }
+
+  const formatPrice = (value) => {
+    const price = Number(value || 0)
+    return price.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+
+  const handleBuy = async () => {
+    if (!product?.id) return
+    if (!user?.id) {
+      navigate('/login')
+      return
+    }
+
+    setBuying(true)
+    setError(null)
+
+    try {
+      if (String(product.author_user_id) === String(user.id)) {
+        throw new Error('No puedes comprar tus propias publicaciones')
+      }
+
+      const methods = await getPaymentMethods(user.id)
+      const activeMethods = Array.isArray(methods)
+        ? methods.filter((method) => String(method.status || 'active').toLowerCase() === 'active')
+        : []
+
+      if (activeMethods.length === 0) {
+        throw new Error('Agrega un metodo de pago antes de comprar')
+      }
+
+      const orderResponse = await createPurchaseOrder({
+        user_id: user.id,
+        status: 'pending',
+        total_amount: Number(product.price || 0),
+        currency: 'MXN',
+      })
+
+      const order = orderResponse.data || orderResponse
+
+      await createPurchaseItem({
+        purchase_order_id: order.id,
+        item_name: product.title,
+        sku: String(product.slug || product.id),
+        quantity: 1,
+        unit_price: Number(product.price || 0),
+        line_total: Number(product.price || 0),
+      })
+
+      await updatePurchaseOrder(order.id, {
+        status: 'completed',
+      })
+
+      navigate('/app/transactions')
+    } catch (err) {
+      setError(err.message || 'No se pudo completar la compra')
+    } finally {
+      setBuying(false)
     }
   }
 
@@ -92,8 +169,8 @@ export default function Products() {
           <div className="slide-up" id="product-detail">
             {/* Image */}
             <div className="product-detail__image-wrapper" style={{ marginBottom: 16 }}>
-              {product.images && product.images.length > 0 ? (
-                <img src={product.images[0].url} alt={product.title} />
+              {normalizeImages(product.images).length > 0 ? (
+                <img src={normalizeImages(product.images)[0]} alt={product.title} />
               ) : (
                 <Icon name="box" className="w-12 h-12 text-gray-300" />
               )}
@@ -111,7 +188,7 @@ export default function Products() {
             {/* Title + Price */}
             <h2 className="product-detail__title">{product.title}</h2>
             <p className="product-detail__price">
-              ${typeof product.price === 'number' ? product.price.toLocaleString('es-MX') : product.price} MXN
+              ${formatPrice(product.price)} MXN
             </p>
 
             {/* Includes ticket banner */}
@@ -127,9 +204,14 @@ export default function Products() {
 
             {/* Buy Button */}
             <div className="card" style={{ marginTop: 16, padding: 16 }}>
-              <button className="btn btn--green btn--block btn--lg" id="product-buy-btn">
-                <Icon name="bag" className="w-4 h-4" /> Comprar ahora
+              <button className="btn btn--green btn--block btn--lg" id="product-buy-btn" onClick={handleBuy} disabled={buying || isOwnProduct}>
+                <Icon name="bag" className="w-4 h-4" /> {isOwnProduct ? 'No puedes comprar tu producto' : (buying ? 'Procesando...' : 'Comprar ahora')}
               </button>
+              {!isOwnProduct && (
+                <button className="btn btn--outline btn--block" style={{ marginTop: 8 }} onClick={() => navigate('/app/payments')}>
+                  <Icon name="credit-card" className="w-4 h-4" /> Mis metodos de pago
+                </button>
+              )}
             </div>
 
             {/* Seller */}
@@ -160,10 +242,10 @@ export default function Products() {
                 <span className="info-row__label">Categoría</span>
                 <span className="info-row__value">#{product.category_id}</span>
               </div>
-              {product.images && product.images.length > 0 && (
+              {normalizeImages(product.images).length > 0 && (
                 <div className="info-row">
                   <span className="info-row__label">Imágenes</span>
-                  <span className="info-row__value">{product.images.length} imagen(es)</span>
+                  <span className="info-row__value">{normalizeImages(product.images).length} imagen(es)</span>
                 </div>
               )}
             </div>
@@ -183,9 +265,16 @@ export default function Products() {
           <div className="empty-state fade-in">
             <span className="empty-state__icon"><Icon name="search" /></span>
             <p>Ingresa un ID de producto para consultar su detalle</p>
-            <p style={{ fontSize: '0.75rem', marginTop: 8, color: 'var(--color-text-muted)' }}>
-              Nota: El endpoint actualmente devuelve datos mock
-            </p>
+          </div>
+        )}
+
+        {!loading && !error && !product && id && (
+          <div className="empty-state fade-in">
+            <span className="empty-state__icon"><Icon name="box" /></span>
+            <p>No se encontro informacion para este producto</p>
+            <button className="btn btn--orange" onClick={() => navigate('/app/marketplace')}>
+              Volver al marketplace
+            </button>
           </div>
         )}
       </div>

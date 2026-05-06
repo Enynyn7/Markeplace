@@ -56,7 +56,7 @@ export default function Register() {
         phone: form.phone.trim() || undefined,
       })
       setSuccess(true)
-      setTimeout(() => navigate('/home'), 1800)
+      setTimeout(() => navigate('/app'), 1800)
     } catch (err) {
       setApiError(err.message || 'Error al crear la cuenta')
     } finally {

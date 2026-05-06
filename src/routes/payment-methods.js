@@ -4,7 +4,15 @@ const db = require('../config/db');
 
 router.get('/', async (req, res) => {
   try {
-    const { rows } = await db.query('SELECT * FROM payment_method ORDER BY id');
+    const { user_id } = req.query;
+    const params = [];
+    let query = 'SELECT * FROM payment_method';
+    if (user_id) {
+      params.push(user_id);
+      query += ' WHERE user_id = $1';
+    }
+    query += ' ORDER BY id';
+    const { rows } = await db.query(query, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -168,3 +168,100 @@ Se implementaron las 4 pantallas faltantes y su navegación:
 - Entrega completada con rutas funcionales, pantallas faltantes implementadas y estilos alineados al Figma.
 - Validación de errores estáticos en archivos modificados: sin errores de sintaxis reportados.
 - Integración con backend mantenida en los flujos que cuentan con endpoint real.
+
+---
+
+## Actualizacion de Sesion - Flujo Marketplace, Compra e Inicio
+
+### Objetivo
+Corregir el flujo completo de compra/venta del marketplace para que publicar, visualizar, comprar y consultar actividad reciente funcionen con datos reales y validaciones consistentes entre frontend, backend y base de datos.
+
+### Cambios Implementados
+
+#### 1) Publicacion de productos
+- Se corrigio el formulario `frontend/src/pages/CreateListing.jsx`.
+- Se agrego campo obligatorio de precio.
+- Se agrego campo de imagen mediante URL.
+- Se agrego vista previa de imagen cuando la URL es valida.
+- Se guarda la imagen en backend usando `POST /post-images`.
+- Se agrego helper `createPostImage(data)` en `frontend/src/api.js`.
+
+#### 2) Categorias de marketplace
+- Se corrigio el catalogo de categorias para que filtros y formulario de publicacion usen la misma fuente: `GET /categories`.
+- Se actualizaron categorias base a: Producto, Servicio, Boleto y Otro.
+- Se agrego compatibilidad/migracion en `src/config/db.js` para actualizar volumenes de PostgreSQL ya existentes.
+- Se actualizo `DataBaseImage/sql/02_seed.sql` para nuevas bases limpias.
+
+#### 3) Marketplace y detalle de producto
+- Se corrigio el filtro por categoria en `frontend/src/pages/Marketplace.jsx`; ahora compara por `category_id`.
+- Se cambio el rango minimo de precio de `$10` a `$0` para no ocultar publicaciones baratas por defecto.
+- Se paso la publicacion completa desde `TicketCard` hacia detalle como estado de navegacion.
+- Se endurecio `frontend/src/pages/Products.jsx` para evitar pagina de detalle vacia y mostrar fallback correcto.
+- Se normalizo formato de precio en detalle.
+
+#### 4) Validaciones de compra
+- Se bloqueo comprar publicaciones propias desde frontend.
+- Se bloqueo comprar publicaciones propias desde backend en `src/routes/purchase-items.js` y `src/routes/purchase-orders.js`.
+- Se bloqueo comprar sin tener metodo de pago activo.
+- La validacion se aplica tanto al crear item de compra como al completar una orden.
+- En detalle de producto se deshabilita el boton de compra cuando el producto pertenece al usuario.
+- Se agrego acceso rapido a metodos de pago desde detalle.
+
+#### 5) Metodos de pago
+- Se amplio `GET /payment-methods` para aceptar filtro `?user_id=`.
+- Se ajusto `frontend/src/pages/Payments.jsx` para consumir solo metodos del usuario actual desde backend.
+- El metodo no necesita ser real; basta con registrar proveedor y ultimos 4 digitos para habilitar compra.
+
+#### 6) Movimientos recientes en Inicio
+- Se diagnostico que `Dashboard` solo leia `transaction`, pero publicar/comprar/vender no siempre generaba movimientos.
+- Se actualizo `frontend/src/pages/Dashboard.jsx` para recuperar y combinar movimientos financieros, compras y publicaciones propias.
+- Se amplio `GET /financial-movements` para aceptar filtro `?user_id=`.
+- Se agrego registro automatico de movimientos: `Publicacion creada`, `Compra` y `Venta`.
+- Al completar una compra se actualizan balances de comprador y vendedor.
+
+#### 7) Compatibilidad de esquema
+- Se agrego migracion no destructiva en `src/config/db.js` para crear `post.price` si no existe.
+- Se agrego migracion no destructiva para asegurar categorias de marketplace en bases persistentes.
+- Esto corrige casos donde Docker reconstruye imagenes pero PostgreSQL conserva volumen anterior.
+
+### Endpoints Ajustados
+- `GET /categories`
+- `GET /posts/:id`
+- `POST /posts`
+- `POST /post-images`
+- `GET /payment-methods?user_id=`
+- `POST /purchase-items`
+- `PUT /purchase-orders/:id`
+- `GET /financial-movements?user_id=`
+
+### Archivos Modificados Relevantes
+- `frontend/src/api.js`
+- `frontend/src/components/TicketCard.jsx`
+- `frontend/src/components/FilterSection.jsx`
+- `frontend/src/pages/Marketplace.jsx`
+- `frontend/src/pages/CreateListing.jsx`
+- `frontend/src/pages/Products.jsx`
+- `frontend/src/pages/Payments.jsx`
+- `frontend/src/pages/Dashboard.jsx`
+- `src/config/db.js`
+- `src/app.js`
+- `src/routes/posts.js`
+- `src/routes/payment-methods.js`
+- `src/routes/purchase-items.js`
+- `src/routes/purchase-orders.js`
+- `src/routes/financial-movements.js`
+- `DataBaseImage/sql/02_seed.sql`
+
+### Validacion Realizada
+- Rebuild con Docker: `docker compose up -d --build`.
+- Frontend validado en `http://localhost:8080`.
+- Backend validado en `http://localhost:3000`.
+- Se confirmo que una publicacion con precio e imagen aparece en `GET /posts/:id`.
+- Se confirmo que la publicacion `bb` existe y no se ocultaba por datos faltantes, sino por filtro minimo de precio.
+- Se confirmo bloqueo API para comprar sin metodo de pago y comprar producto propio.
+- Se probo compra temporal con metodo falso y se generaron movimientos de compra, venta y publicacion.
+- Se limpiaron registros temporales usados para validacion.
+
+### Observaciones
+- Las URLs de imagen deben ser URLs directas a imagen (`.jpg`, `.png`, CDN, etc.). Una URL de redireccion o pagina web puede guardarse, pero el navegador puede no renderizarla como imagen.
+- Las pruebas automatizadas con Jest no pudieron correrse dentro del contenedor porque `jest` no esta instalado en la imagen actual del backend.

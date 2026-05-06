@@ -19,7 +19,7 @@ export default function MyPurchases() {
       setError(null)
       try {
         const [ordersData, itemsData] = await Promise.all([
-          getPurchaseOrders(),
+          getPurchaseOrders(user?.id),
           getPurchaseItems(),
         ])
         setOrders(Array.isArray(ordersData) ? ordersData : [])
@@ -34,9 +34,7 @@ export default function MyPurchases() {
   }, [])
 
   const myOrders = useMemo(() => {
-    return orders
-      .filter((o) => String(o.user_id) === String(user?.id))
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    return [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   }, [orders, user])
 
   const totalSpent = useMemo(() => {
@@ -44,7 +42,7 @@ export default function MyPurchases() {
   }, [myOrders])
 
   const completedCount = useMemo(() => {
-    return myOrders.filter((o) => o.status === 'completed').length
+    return myOrders.filter((o) => ['completed', 'completado', 'paid'].includes(String(o.status || '').toLowerCase())).length
   }, [myOrders])
 
   const groupedItems = useMemo(() => {
