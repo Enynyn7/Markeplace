@@ -63,7 +63,7 @@ export default function MyListings() {
           </div>
         )}
 
-        <button onClick={() => navigate('/marketplace/publicar')} className="btn btn--green btn--block" style={{ marginBottom: 12 }}>
+        <button onClick={() => navigate('/app/listings/create')} className="btn btn--green btn--block" style={{ marginBottom: 12 }}>
           <Icon name="check" className="w-4 h-4" /> Nueva publicación
         </button>
 
@@ -86,7 +86,7 @@ export default function MyListings() {
                   {post.content || 'Sin descripción'}
                 </p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn--outline" style={{ flex: 1 }} onClick={() => navigate(`/productos/${post.id}`)}>
+                  <button className="btn btn--outline" style={{ flex: 1 }} onClick={() => navigate(`/app/products/${post.id}`)}>
                     Ver
                   </button>
                   <button className="btn btn--outline" style={{ flex: 1, color: 'var(--color-red)', borderColor: 'var(--color-red-border)' }} onClick={() => handleDelete(post.id)}>

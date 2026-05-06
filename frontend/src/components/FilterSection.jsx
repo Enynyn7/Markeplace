@@ -1,22 +1,8 @@
 import { useState, useEffect } from 'react'
 
 export default function FilterSection({ categories = [], onApply = () => {}, initialCategory = '', initialMin = '', initialMax = '' }) {
-  const PRICE_MIN = 10
+  const PRICE_MIN = 0
   const PRICE_MAX = 10000
-  const staticCategories = [
-    'Producto',
-    'Tecnologia',
-    'Ropa y Accesorios',
-    'Hogar',
-    'Alimentos',
-    'Obras Artisticas',
-    'Otros',
-    'Servicio'
-  ]
-  const apiCategoryNames = categories
-    .map((cat) => (typeof cat === 'string' ? cat : cat?.name))
-    .filter(Boolean)
-  const mergedCategories = Array.from(new Set([...staticCategories, ...apiCategoryNames]))
 
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
   const [sliderPrice, setSliderPrice] = useState(Number(initialMax) || PRICE_MAX)
@@ -57,16 +43,16 @@ export default function FilterSection({ categories = [], onApply = () => {}, ini
             />
             <span>Todas las categorías</span>
           </label>
-          {mergedCategories.map((catName) => (
-            <label key={catName} className="filter-category-item">
+          {Array.isArray(categories) && categories.map((cat) => (
+            <label key={cat.id} className="filter-category-item">
               <input
                 type="radio"
                 name="category"
-                value={catName}
-                checked={String(selectedCategory).toLowerCase() === String(catName).toLowerCase()}
-                onChange={() => setSelectedCategory(String(catName))}
+                value={String(cat.id)}
+                checked={String(selectedCategory) === String(cat.id)}
+                onChange={() => setSelectedCategory(String(cat.id))}
               />
-              <span>{catName}</span>
+              <span>{cat.name}</span>
             </label>
           ))}
         </div>

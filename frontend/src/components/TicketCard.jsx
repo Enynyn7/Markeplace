@@ -11,6 +11,7 @@ export default function TicketCard(props) {
     price,
     includesTicket,
     category,
+    listing,
     images = []
   } = props;
 
@@ -20,7 +21,7 @@ export default function TicketCard(props) {
   const next = (e) => { e.stopPropagation(); if (images.length>0) setIdx((idx+1)%images.length) }
   const prev = (e) => { e.stopPropagation(); if (images.length>0) setIdx((idx-1+images.length)%images.length) }
 
-  const toDetails = () => navigate(`/productos/${id}`)
+  const toDetails = () => navigate(`/app/products/${id}`, { state: { product: listing } })
 
   return (
     <div className="ticket-card bg-white rounded-lg shadow-sm overflow-hidden">

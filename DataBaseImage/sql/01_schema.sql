@@ -213,6 +213,7 @@ CREATE TABLE post (
   title           VARCHAR(300)  NOT NULL,
   slug            VARCHAR(350)  NOT NULL UNIQUE,
   content         TEXT,
+  price           DECIMAL(10,2),
   status          VARCHAR(30)   NOT NULL DEFAULT 'draft',
   published_at    TIMESTAMP,
   created_at      TIMESTAMP     NOT NULL DEFAULT NOW(),

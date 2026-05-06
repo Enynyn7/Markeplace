@@ -12,10 +12,10 @@ export default function Home() {
             Sistema de Gestión y Marketplace de Boletos, Productos y Servicios
           </p>
           <div className="hero__actions">
-            <Link to="/boletos" className="hero__btn--primary" id="cta-boletos">
+            <Link to="/app/tickets" className="hero__btn--primary" id="cta-boletos">
               <Icon name="ticket" className="w-5 h-5" /> Ver Boletos
             </Link>
-            <Link to="/productos" className="hero__btn--secondary" id="cta-productos">
+            <Link to="/app/marketplace" className="hero__btn--secondary" id="cta-productos">
               <Icon name="bag" className="w-5 h-5" /> Marketplace
             </Link>
           </div>
@@ -25,7 +25,7 @@ export default function Home() {
         <section className="features">
           <h2 className="features__title">¿Qué puedes hacer?</h2>
           <div className="features__grid stagger">
-            <Link to="/boletos" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Link to="/app/tickets" style={{ textDecoration: 'none', color: 'inherit' }}>
               <div className="card feature-card" id="feature-boletos">
                 <span className="feature-card__icon"><Icon name="ticket" /></span>
                 <h3 className="feature-card__title">Detalle de Boletos</h3>
@@ -34,7 +34,7 @@ export default function Home() {
                 </p>
               </div>
             </Link>
-            <Link to="/productos" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Link to="/app/marketplace" style={{ textDecoration: 'none', color: 'inherit' }}>
               <div className="card feature-card" id="feature-productos">
                 <span className="feature-card__icon"><Icon name="bag" /></span>
                 <h3 className="feature-card__title">Detalle de Productos</h3>

@@ -23,10 +23,9 @@ export default function Payments() {
     setLoading(true)
     setError(null)
     try {
-      const data = await getPaymentMethods()
+      const data = await getPaymentMethods(user?.id)
       const list = Array.isArray(data) ? data : []
-      const mine = list.filter((m) => String(m.user_id) === String(user?.id))
-      setMethods(mine)
+      setMethods(list)
     } catch (err) {
       setError(err.message)
     } finally {

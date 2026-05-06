@@ -1,78 +1,97 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getFinancialAccounts, getFinancialMovements } from '../api'
+import { getFinancialAccounts, getFinancialMovements, getPosts, getPurchaseOrders, getTickets } from '../api'
 import Loader from '../components/Loader'
 import Icon from '../components/Icon'
 import { useAuth } from '../context/AuthContext'
+
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString('es-MX')
+}
+
+function isSoldTicket(ticket) {
+  const status = String(ticket?.estado_venta || ticket?.status || '').toLowerCase()
+  return ['completed', 'sold', 'approved', 'completado'].includes(status)
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  
-  const [financialData, setFinancialData] = useState({
-    balanceTotal: 0,
-    tuition: {
-      semester: "Primavera 2026",
-      amount: 95000,
-      paid: 45000,
-      pending: 50000,
-      dueDate: "15 de Abril, 2026",
-    },
-    tickets: {
-      assigned: 10,
-      sold: 5,
-      pending: 5,
-      amountFromSales: 2500,
-      potentialDebt: 2500,
-      deadline: "15 de Mayo, 2026",
-    },
-    scholarship: {
-      type: "Beca Académica",
-      percentage: 60,
-      amount: 57000,
-    },
-  })
-
+  const [account, setAccount] = useState(null)
+  const [tickets, setTickets] = useState([])
   const [movements, setMovements] = useState([])
+  const [posts, setPosts] = useState([])
+  const [orders, setOrders] = useState([])
 
   useEffect(() => {
-    fetchFinancialData()
+    const loadDashboard = async () => {
+      if (!user?.id) {
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const [accountsData, ticketsData, movementsData, postsData, ordersData] = await Promise.all([
+          getFinancialAccounts(user.id),
+          getTickets(user.id),
+          getFinancialMovements(null, user.id),
+          getPosts(),
+          getPurchaseOrders(user.id),
+        ])
+
+        const accountData = Array.isArray(accountsData) ? accountsData[0] : accountsData
+        setAccount(accountData || null)
+
+        const ticketList = Array.isArray(ticketsData) ? ticketsData : []
+        setTickets(ticketList)
+
+        setMovements(Array.isArray(movementsData) ? movementsData : [])
+        setPosts(Array.isArray(postsData) ? postsData : [])
+        setOrders(Array.isArray(ordersData) ? ordersData : [])
+      } catch (err) {
+        setError(`Error cargando el dashboard: ${err.message}`)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDashboard()
   }, [user])
 
-  const fetchFinancialData = async () => {
-    if (!user) return;
-    try {
-      const data = await getFinancialAccounts(user.id)
-      const account = Array.isArray(data) ? data[0] : data
-      
-      if (account) {
-        setFinancialData(prev => ({
-          ...prev,
-          balanceTotal: Number(account.balance) || 0,
-          tuition: {
-            ...prev.tuition,
-            pending: Number(account.balance) || 0
-          }
-        }))
-        
-        try {
-          const movs = await getFinancialMovements(account.id)
-          if (Array.isArray(movs)) {
-            const filtered = movs.filter(m => m.financial_account_id === account.id).reverse()
-            setMovements(filtered)
-          }
-        } catch (movErr) {
-          console.error("No se pudieron cargar los movimientos:", movErr)
-        }
-      }
-    } catch (err) {
-      setError("Error cargando cuenta financiera: " + err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const soldTickets = tickets.filter(isSoldTicket)
+  const pendingTickets = tickets.filter((ticket) => !isSoldTicket(ticket))
+  const soldTotal = soldTickets.reduce((sum, ticket) => sum + Number(ticket.price || 0), 0)
+  const pendingTotal = pendingTickets.reduce((sum, ticket) => sum + Number(ticket.price || 0), 0)
+  const balanceTotal = Number(account?.balance || 0)
+  const recentActivities = [
+    ...movements.map((movement) => ({
+      id: `movement-${movement.id}`,
+      date: movement.created_at,
+      description: movement.description || 'Movimiento',
+      amount: Number(movement.amount || 0),
+    })),
+    ...posts
+      .filter((post) => String(post.author_user_id) === String(user?.id))
+      .map((post) => ({
+        id: `post-${post.id}`,
+        date: post.created_at,
+        description: `Publicacion: ${post.title}`,
+        amount: 0,
+      })),
+    ...orders.map((order) => ({
+      id: `order-${order.id}`,
+      date: order.created_at,
+      description: `Compra orden #${order.id}`,
+      amount: -Math.abs(Number(order.total_amount || 0)),
+    })),
+  ]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5)
 
   if (loading) {
     return <div className="page container"><Loader text="Cargando finanzas..." /></div>
@@ -84,7 +103,7 @@ export default function Dashboard() {
         <header className="header fade-in" style={{ marginBottom: 16 }}>
           <div>
             <h1 className="header__title">Dashboard Financiero</h1>
-            <p className="header__subtitle">{user?.fullName || "Estudiante Becado"}</p>
+            <p className="header__subtitle">{user?.fullName || user?.name || 'Usuario'}</p>
           </div>
         </header>
 
@@ -95,154 +114,90 @@ export default function Dashboard() {
         )}
 
         <div className="stagger">
-          {/* Overview */}
           <div className="card dashboard-overview-card">
-            <p className="dashboard-overview-label">Balance Total</p>
-            <p className="dashboard-overview-amount">
-              ${(financialData.tuition.pending + financialData.tickets.potentialDebt).toLocaleString('es-MX')}
-            </p>
+            <p className="dashboard-overview-label">Balance total</p>
+            <p className="dashboard-overview-amount">${formatMoney(balanceTotal)}</p>
             <div className="dashboard-overview-split">
               <div>
-                <p className="dashboard-overview-sub">Colegiatura pendiente</p>
-                <p className="dashboard-overview-subvalue">${financialData.tuition.pending.toLocaleString('es-MX')}</p>
+                <p className="dashboard-overview-sub">Cuenta</p>
+                <p className="dashboard-overview-subvalue">{account?.account_type || 'Sin cuenta'}</p>
               </div>
               <div className="dashboard-overview-right">
-                <p className="dashboard-overview-sub">Boletos pendientes</p>
-                <p className="dashboard-overview-subvalue">${financialData.tickets.potentialDebt.toLocaleString('es-MX')}</p>
+                <p className="dashboard-overview-sub">Moneda</p>
+                <p className="dashboard-overview-subvalue">{account?.currency || 'MXN'}</p>
               </div>
             </div>
           </div>
 
-          {/* Alertas */}
-          {financialData.tickets.pending > 0 && (
-              <div className="alert alert--error" style={{ background: 'var(--color-yellow-light)', borderColor: 'var(--color-yellow-border)', color: 'var(--color-yellow-text)', alignItems: 'flex-start' }}>
-                <span style={{ marginTop: 2 }}><Icon name="warning" className="w-4 h-4" /></span>
+          {pendingTickets.length > 0 && (
+            <div className="alert alert--error" style={{ background: 'var(--color-yellow-light)', borderColor: 'var(--color-yellow-border)', color: 'var(--color-yellow-text)', alignItems: 'flex-start' }}>
+              <span style={{ marginTop: 2 }}><Icon name="warning" className="w-4 h-4" /></span>
               <div>
-                <strong style={{ display: 'block', marginBottom: 4 }}>¡Atención! Tienes {financialData.tickets.pending} boletos sin vender</strong>
-                <span style={{ fontSize: '0.75rem', display: 'block' }}>Fecha límite: {financialData.tickets.deadline}</span>
-                <button onClick={() => navigate('/boletos')} style={{ background: 'none', border: 'none', color: 'var(--color-yellow-text)', textDecoration: 'underline', fontSize: '0.75rem', padding: 0, marginTop: 8, cursor: 'pointer', fontWeight: 600 }}>
+                <strong style={{ display: 'block', marginBottom: 4 }}>Tienes {pendingTickets.length} boletos sin vender</strong>
+                <span style={{ fontSize: '0.75rem', display: 'block' }}>Adeudo potencial: ${formatMoney(pendingTotal)}</span>
+                <button onClick={() => navigate('/app/tickets')} style={{ background: 'none', border: 'none', color: 'var(--color-yellow-text)', textDecoration: 'underline', fontSize: '0.75rem', padding: 0, marginTop: 8, cursor: 'pointer', fontWeight: 600 }}>
                   Ver mis boletos
                 </button>
               </div>
             </div>
           )}
 
-          {/* Beca */}
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ fontWeight: 600 }}>Mi Beca</h3>
-              <span className="badge badge--blue" style={{ background: '#dbeafe', color: '#1d4ed8' }}>{financialData.scholarship.percentage}%</span>
-            </div>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: 8 }}>
-              {financialData.scholarship.type}
-            </p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-green)' }}>
-              ${financialData.scholarship.amount.toLocaleString('es-MX')}
-            </p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>Descuento aplicado este semestre</p>
-          </div>
-
-          {/* Estado de Boletos */}
           <div className="card">
             <h3 style={{ fontWeight: 600, marginBottom: 12 }}>Estado de Boletos</h3>
             <div className="tickets-stats-grid" style={{ marginBottom: 16 }}>
               <div className="ticket-state-box ticket-state-box--sold">
                 <p className="ticket-state-box__label">Vendidos</p>
-                <p className="ticket-state-box__value">{financialData.tickets.sold}</p>
-                <p className="ticket-state-box__meta">${financialData.tickets.amountFromSales.toLocaleString('es-MX')}</p>
+                <p className="ticket-state-box__value">{soldTickets.length}</p>
+                <p className="ticket-state-box__meta">${formatMoney(soldTotal)}</p>
               </div>
               <div className="ticket-state-box ticket-state-box--pending">
                 <p className="ticket-state-box__label">Sin vender</p>
-                <p className="ticket-state-box__value">{financialData.tickets.pending}</p>
-                <p className="ticket-state-box__meta">${financialData.tickets.potentialDebt.toLocaleString('es-MX')}</p>
+                <p className="ticket-state-box__value">{pendingTickets.length}</p>
+                <p className="ticket-state-box__meta">${formatMoney(pendingTotal)}</p>
               </div>
             </div>
-            <button className="btn btn--green btn--block" onClick={() => navigate('/boletos')}>
+            <button className="btn btn--green btn--block" onClick={() => navigate('/app/tickets')}>
               Gestionar mis boletos
             </button>
           </div>
 
-          {/* Colegiatura */}
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontWeight: 600 }}>Colegiatura</h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{financialData.tuition.semester}</span>
-            </div>
-            
-            <div className="info-row">
-              <span className="info-row__label">Total semestre</span>
-              <span className="info-row__value">${financialData.tuition.amount.toLocaleString('es-MX')}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-row__label">Pagado</span>
-              <span className="info-row__value" style={{ color: 'var(--color-green)' }}>${financialData.tuition.paid.toLocaleString('es-MX')}</span>
-            </div>
-            <div className="info-row" style={{ borderBottom: 'none' }}>
-              <span className="info-row__label">Pendiente</span>
-              <span className="info-row__value" style={{ color: 'var(--color-red)' }}>${financialData.tuition.pending.toLocaleString('es-MX')}</span>
-            </div>
-
-            <div style={{ background: '#e5e7eb', height: 8, borderRadius: 4, margin: '16px 0 8px', overflow: 'hidden' }}>
-              <div style={{ background: 'var(--color-green)', height: '100%', width: `${(financialData.tuition.paid / financialData.tuition.amount) * 100}%`, transition: 'width 0.3s ease' }} />
-            </div>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textAlign: 'right' }}>
-              {Math.round((financialData.tuition.paid / financialData.tuition.amount) * 100)}% completado
-            </p>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTop: '1px solid #f3f4f6' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}><Icon name="calendar" className="w-4 h-4" /> Vence: {financialData.tuition.dueDate}</span>
-              <button onClick={() => navigate('/payments')} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', textDecoration: 'underline' }}>
-                Pagar ahora
-              </button>
-            </div>
-          </div>
-
-          {/* Historial de Movimientos Reales */}
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontWeight: 600 }}>Movimientos Recientes</h3>
+              {account && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{account.account_type}</span>}
             </div>
-            
-            {movements.length === 0 ? (
+
+            {recentActivities.length === 0 ? (
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', textAlign: 'center', padding: '16px 0' }}>
                 No hay movimientos registrados.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {movements.slice(0, 5).map(m => (
-                  <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid #f3f4f6' }}>
+                {recentActivities.map((movement) => (
+                  <div key={movement.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '1px solid #f3f4f6' }}>
                     <div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{m.description || 'Transacción'}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                        {new Date(m.created_at).toLocaleDateString()}
-                      </p>
+                      <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{movement.description || 'Transacción'}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{new Date(movement.date).toLocaleDateString('es-MX')}</p>
                     </div>
-                    <span style={{ fontWeight: 600, color: Number(m.amount) >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
-                      {Number(m.amount) >= 0 ? '+' : ''}${Math.abs(Number(m.amount)).toLocaleString('es-MX')}
+                    <span style={{ fontWeight: 600, color: Number(movement.amount) >= 0 ? 'var(--color-green)' : 'var(--color-red)' }}>
+                      {Number(movement.amount) >= 0 ? '+' : ''}${formatMoney(Math.abs(Number(movement.amount || 0)))}
                     </span>
                   </div>
                 ))}
-                {movements.length > 5 && (
-                  <button onClick={() => navigate('/transactions')} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer', textAlign: 'center', marginTop: 8 }}>
-                    Ver todo el historial
-                  </button>
-                )}
               </div>
             )}
           </div>
 
-          {/* Acciones Rápidas */}
           <div className="dashboard-quick-grid">
-             <button className="btn btn--outline dashboard-quick-btn" onClick={() => navigate('/transactions')}>
-               <Icon name="box" className="dashboard-quick-btn__icon" />
-               <span>Mis compras</span>
-             </button>
-             <button className="btn btn--outline dashboard-quick-btn" onClick={() => navigate('/payments')}>
-               <Icon name="credit-card" className="dashboard-quick-btn__icon" />
-               <span>Métodos de pago</span>
-             </button>
+            <button className="btn btn--outline dashboard-quick-btn" onClick={() => navigate('/app/transactions')}>
+              <Icon name="box" className="dashboard-quick-btn__icon" />
+              <span>Mis compras</span>
+            </button>
+            <button className="btn btn--outline dashboard-quick-btn" onClick={() => navigate('/app/payments')}>
+              <Icon name="credit-card" className="dashboard-quick-btn__icon" />
+              <span>Métodos de pago</span>
+            </button>
           </div>
-
         </div>
       </div>
     </div>

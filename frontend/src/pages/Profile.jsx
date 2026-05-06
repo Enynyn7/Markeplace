@@ -31,7 +31,7 @@ export default function Profile() {
   return (
     <div className="page" style={{ paddingBottom: 80 }}>
       <header className="header" style={{ background: 'var(--color-primary)', color: 'white', borderBottom: 'none', justifyContent: 'flex-start', padding: '16px' }}>
-        <button className="header__back" onClick={() => navigate('/dashboard')} style={{ color: 'white', marginRight: '16px' }}>
+        <button className="header__back" onClick={() => navigate('/app')} style={{ color: 'white', marginRight: '16px' }}>
           &#8592;
         </button>
         <h1 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Mi Perfil</h1>
