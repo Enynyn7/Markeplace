@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
@@ -166,69 +166,23 @@ router.post('/register', async (req, res) => {
 
 /**
  * POST /auth/recover-password
- * Body: { email }
+ * Recuperación de contraseña deshabilitada hasta integrar un proveedor real de correo o SMS.
  */
 router.post('/recover-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: 'Email es requerido' });
-    }
-
-    const { rows } = await db.query('SELECT u.id, p.phone FROM "user" u LEFT JOIN profile p ON p.user_id = u.id WHERE u.email = $1', [email]);
-    if (rows.length === 0) {
-      // Simular éxito para no revelar si el correo existe
-      return res.json({ message: 'Si el correo existe, se ha enviado un código de recuperación.' });
-    }
-
-    const user = rows[0];
-    
-    // Aquí iría la lógica de 2FA vía SMS. 
-    // Para el sprint, simulamos el envío de SMS.
-    console.log(`[auth/recover-password] Simulando envío de SMS al número ${user.phone || 'no registrado'}. Código: 123456`);
-
-    res.json({ 
-      message: 'Si el correo existe, se ha enviado un código de recuperación.',
-      mockCode: '123456'
-    });
-  } catch (err) {
-    console.error('[auth/recover-password]', err);
-    res.status(500).json({ error: err.message });
-  }
+  return res.status(501).json({
+    message: 'Recuperación de contraseña no configurada. Falta integrar un proveedor real de correo o SMS.'
+  });
 });
 
 /**
  * POST /auth/reset-password
- * Body: { email, code, newPassword }
+ * Reset de contraseña deshabilitado hasta integrar tokens reales de recuperación.
  */
 router.post('/reset-password', async (req, res) => {
-  try {
-    const { email, code, newPassword } = req.body;
-    if (!email || !code || !newPassword) {
-      return res.status(400).json({ message: 'Faltan campos requeridos' });
-    }
-    
-    // Validar el código simulado
-    if (code !== '123456') {
-      return res.status(400).json({ message: 'Código inválido o expirado' });
-    }
-
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    
-    const { rowCount } = await db.query(
-      `UPDATE "user" SET password_hash = $1 WHERE email = $2`,
-      [passwordHash, email]
-    );
-
-    if (rowCount === 0) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-
-    res.json({ message: 'Contraseña actualizada exitosamente' });
-  } catch (err) {
-    console.error('[auth/reset-password]', err);
-    res.status(500).json({ error: err.message });
-  }
+  return res.status(501).json({
+    message: 'Reset de contraseña no configurado. Falta integrar tokens reales de recuperación.'
+  });
 });
 
 module.exports = router;
+
