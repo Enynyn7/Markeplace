@@ -1,4 +1,4 @@
-const { Pool } = require('pg');
+﻿const { Pool } = require('pg');
 
 // Configuracion usando variables de entorno.
 const pool = new Pool({
@@ -12,6 +12,25 @@ const pool = new Pool({
 const ready = pool.query(`
   ALTER TABLE IF EXISTS post
     ADD COLUMN IF NOT EXISTS price DECIMAL(10,2);
+
+  ALTER TABLE IF EXISTS profile
+    ADD COLUMN IF NOT EXISTS user_type VARCHAR(20) NOT NULL DEFAULT 'external',
+    ADD COLUMN IF NOT EXISTS student_id VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS scholarship_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00;
+
+  ALTER TABLE IF EXISTS profile
+    DROP CONSTRAINT IF EXISTS profile_user_type_check;
+
+  ALTER TABLE IF EXISTS profile
+    ADD CONSTRAINT profile_user_type_check
+    CHECK (user_type IN ('student', 'external'));
+
+  ALTER TABLE IF EXISTS profile
+    DROP CONSTRAINT IF EXISTS profile_scholarship_percent_check;
+
+  ALTER TABLE IF EXISTS profile
+    ADD CONSTRAINT profile_scholarship_percent_check
+    CHECK (scholarship_percent >= 0 AND scholarship_percent <= 100);
 
   UPDATE category
      SET name = 'Producto',
@@ -80,3 +99,4 @@ module.exports = {
   pool,
   ready,
 };
+

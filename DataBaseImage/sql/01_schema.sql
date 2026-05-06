@@ -1,4 +1,4 @@
--- =============================================================
+﻿-- =============================================================
 --  schema.sql  –  Core DB Schema
 --  Motor   : PostgreSQL 16
 --  IDs     : SERIAL (enteros autoincrement)
@@ -50,6 +50,9 @@ CREATE TABLE profile (
   last_name   VARCHAR(100),
   avatar_url  TEXT,
   phone       VARCHAR(30),
+  user_type   VARCHAR(20)   NOT NULL DEFAULT 'external' CHECK (user_type IN ('student', 'external')),
+  student_id  VARCHAR(30),
+  scholarship_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00 CHECK (scholarship_percent >= 0 AND scholarship_percent <= 100),
   created_at  TIMESTAMP     NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMP     NOT NULL DEFAULT NOW()
 );
@@ -300,3 +303,4 @@ CREATE INDEX idx_post_slug            ON post(slug);
 CREATE INDEX idx_category_slug        ON category(slug);
 CREATE INDEX idx_notification_user    ON notification(user_id);
 CREATE INDEX idx_purchase_order_user  ON purchase_order(user_id);
+
