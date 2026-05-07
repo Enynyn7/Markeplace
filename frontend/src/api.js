@@ -307,3 +307,14 @@ export async function resetPassword(email, code, newPassword) {
   if (!res.ok) throw new Error(`Error ${res.status}`);
   return res.json();
 }
+
+export async function getAvailableTickets(userId) {
+  return apiFetch(`/tickets/available?user_id=${encodeURIComponent(userId)}`);
+}
+
+export async function createTicket(ticketData) {
+  return apiFetch('/tickets', {
+    method: 'POST',
+    body: JSON.stringify(ticketData)
+  });
+}

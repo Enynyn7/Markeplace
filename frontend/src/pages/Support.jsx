@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { getFAQs, submitSupportRequest } from '../api'
+import { useAuth } from '../context/AuthContext'
 import Loader from '../components/Loader'
 import Icon from '../components/Icon'
 
@@ -24,16 +25,17 @@ function AccordionItem({ faq }) {
 }
 
 export default function Support() {
+  const { user } = useAuth()
+
   const [faqs, setFaqs] = useState([])
   const [loadingFaqs, setLoadingFaqs] = useState(true)
   const [faqError, setFaqError] = useState(null)
 
-  // Form state
   const [formData, setFormData] = useState({
-    user_id: '',
     subject: '',
     message: '',
   })
+
   const [submitting, setSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState(null)
 
@@ -44,30 +46,74 @@ export default function Support() {
   const loadFAQs = async () => {
     setLoadingFaqs(true)
     setFaqError(null)
+
     try {
       const result = await getFAQs()
-      setFaqs(result.data || result)
+      setFaqs(Array.isArray(result?.data) ? result.data : result)
     } catch (err) {
-      setFaqError(err.message)
+      setFaqError(err.message || 'No se pudieron cargar las preguntas frecuentes')
     } finally {
       setLoadingFaqs(false)
     }
   }
 
   const handleInputChange = (e) => {
+    setSubmitResult(null)
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  const canSubmit = useMemo(() => {
+    return Boolean(
+      user?.id &&
+      formData.subject.trim() &&
+      formData.message.trim() &&
+      !submitting
+    )
+  }, [user, formData, submitting])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (!user?.id) {
+      setSubmitResult({
+        type: 'error',
+        message: 'Debes iniciar sesión para enviar una solicitud de soporte.',
+      })
+      return
+    }
+
+    if (!formData.subject.trim() || !formData.message.trim()) {
+      setSubmitResult({
+        type: 'error',
+        message: 'Asunto y mensaje son obligatorios.',
+      })
+      return
+    }
+
     setSubmitting(true)
     setSubmitResult(null)
+
     try {
-      const result = await submitSupportRequest(formData)
-      setSubmitResult({ type: 'success', message: result.message || '¡Solicitud enviada con éxito!' })
-      setFormData({ user_id: '', subject: '', message: '' })
+      const result = await submitSupportRequest({
+        user_id: user.id,
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+      })
+
+      setSubmitResult({
+        type: 'success',
+        message: result.message || 'Solicitud enviada correctamente.',
+      })
+
+      setFormData({
+        subject: '',
+        message: '',
+      })
     } catch (err) {
-      setSubmitResult({ type: 'error', message: err.message })
+      setSubmitResult({
+        type: 'error',
+        message: err.message || 'No se pudo enviar la solicitud.',
+      })
     } finally {
       setSubmitting(false)
     }
@@ -79,57 +125,54 @@ export default function Support() {
         <header className="page-header fade-in">
           <h1 className="page-header__title">Soporte y Ayuda</h1>
           <p className="page-header__subtitle">
-            Encuentra respuestas rápidas o envíanos tu consulta
+            Consulta preguntas frecuentes o envía una solicitud desde tu cuenta.
           </p>
         </header>
 
-        {/* Quick Contact - Figma Style */}
         <div className="card fade-in" style={{ marginBottom: 16 }}>
-          <h2 className="card__title" style={{ marginBottom: 16 }}>Contacto rápido</h2>
+          <h2 className="card__title" style={{ marginBottom: 16 }}>Canales disponibles</h2>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <a href="mailto:soporte@udlap.mx" className="icon-row" style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="icon-row__icon icon-row__icon--orange"><Icon name="mail" /></div>
-              <div className="icon-row__text">
-                <strong>Email</strong>
-                <span>soporte@udlap.mx</span>
+            <div className="icon-row">
+              <div className="icon-row__icon icon-row__icon--orange">
+                <Icon name="mail" />
               </div>
-            </a>
+              <div className="icon-row__text">
+                <strong>Formulario de soporte</strong>
+                <span>La solicitud se guarda en el sistema y queda asociada a tu usuario.</span>
+              </div>
+            </div>
 
-            <a href="tel:+525512345678" className="icon-row" style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="icon-row__icon icon-row__icon--green"><Icon name="phone" /></div>
-              <div className="icon-row__text">
-                <strong>Teléfono</strong>
-                <span>+52 55 1234 5678</span>
+            <div className="icon-row">
+              <div className="icon-row__icon icon-row__icon--blue">
+                <Icon name="help" />
               </div>
-            </a>
-
-            <button className="icon-row" onClick={() => alert("Chat en vivo próximamente")} style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'left', padding: 12 }}>
-              <div className="icon-row__icon icon-row__icon--blue"><Icon name="help" /></div>
               <div className="icon-row__text">
-                <strong>Chat en vivo</strong>
-                <span>Disponible 9:00 - 18:00</span>
+                <strong>Preguntas frecuentes</strong>
+                <span>Las respuestas se cargan desde la base de datos.</span>
               </div>
-            </button>
+            </div>
           </div>
         </div>
 
-        {/* Contact Form - Figma Style */}
         <div className="card fade-in" style={{ marginBottom: 16 }}>
-          <h2 className="card__title" style={{ marginBottom: 16 }}>Enviar mensaje</h2>
-          
+          <h2 className="card__title" style={{ marginBottom: 16 }}>Enviar solicitud</h2>
+
+          {!user?.id && (
+            <div className="alert alert--error" style={{ marginBottom: 16 }}>
+              <span><Icon name="warning" /></span>
+              Debes iniciar sesión para enviar una solicitud de soporte.
+            </div>
+          )}
+
           <form className="form" onSubmit={handleSubmit} id="support-form">
             <div className="input-group">
-              <label htmlFor="support-user-id">ID de usuario</label>
+              <label>Usuario</label>
               <input
-                type="number"
+                type="text"
                 className="input"
-                id="support-user-id"
-                name="user_id"
-                placeholder="Ej: 3"
-                value={formData.user_id}
-                onChange={handleInputChange}
-                required
-                min="1"
+                value={user?.email || 'Sin sesión activa'}
+                disabled
               />
             </div>
 
@@ -164,11 +207,11 @@ export default function Support() {
             <button
               type="submit"
               className="btn btn--orange btn--lg btn--block"
-              disabled={submitting}
+              disabled={!canSubmit}
               id="support-submit-btn"
               style={{ marginTop: 8 }}
             >
-              {submitting ? <><Icon name="clock" /> Enviando...</> : 'Enviar mensaje'}
+              {submitting ? <><Icon name="clock" /> Enviando...</> : 'Enviar solicitud'}
             </button>
           </form>
 
@@ -184,7 +227,6 @@ export default function Support() {
           )}
         </div>
 
-        {/* FAQs - Figma Style */}
         <div className="card fade-in">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
             <span style={{ fontSize: '1.25rem' }}><Icon name="help" /></span>
@@ -195,7 +237,7 @@ export default function Support() {
 
           {faqError && (
             <div className="alert alert--error" id="faq-error">
-              <span><Icon name="warning" className="w-4 h-4" /></span> {faqError}
+              <span><Icon name="warning" /></span> {faqError}
             </div>
           )}
 
@@ -214,7 +256,6 @@ export default function Support() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   )

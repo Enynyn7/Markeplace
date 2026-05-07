@@ -1,4 +1,4 @@
--- =============================================================
+﻿-- =============================================================
 --  seed.sql  –  Datos de prueba
 --  Motor   : PostgreSQL 16
 --  Ejecutar DESPUÉS de schema.sql
@@ -745,4 +745,31 @@ VALUES (
         4,
         TRUE
     );
+
+
+-- -------------------------------------------------------------
+-- STUDENT / EXTERNAL / SCHOLARSHIP DATA
+-- -------------------------------------------------------------
+UPDATE profile
+SET user_type = 'external',
+    student_id = NULL,
+    scholarship_percent = 0.00;
+
+UPDATE profile
+SET user_type = 'student',
+    student_id = 'UDLAP0003',
+    scholarship_percent = 60.00
+WHERE user_id = 3;
+
+UPDATE profile
+SET user_type = 'external',
+    student_id = NULL,
+    scholarship_percent = 0.00
+WHERE user_id = 4;
+
+UPDATE profile
+SET user_type = 'student',
+    student_id = 'UDLAP0005',
+    scholarship_percent = 30.00
+WHERE user_id = 5;
 
