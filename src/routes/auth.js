@@ -6,8 +6,12 @@ const bcrypt = require('bcrypt');
 const VALID_USER_TYPES = ['student', 'external'];
 
 function normalizeUserType(value) {
-  const normalized = String(value || 'external').toLowerCase().trim();
-  return VALID_USER_TYPES.includes(normalized) ? normalized : null;
+  return String(value || 'external').toLowerCase()
+}
+
+function inferUserTypeFromEmail(email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+  return normalizedEmail.endsWith('@udlap.mx') ? 'student' : 'external'
 }
 
 function normalizeScholarship(value, userType) {
@@ -120,7 +124,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
     }
 
-    const normalizedUserType = normalizeUserType(userType);
+    const normalizedUserType = inferUserTypeFromEmail(email);
 
     if (!normalizedUserType) {
       return res.status(400).json({ message: 'Tipo de usuario inválido. Usa student o external.' });
@@ -237,3 +241,4 @@ router.post('/reset-password', async (req, res) => {
 });
 
 module.exports = router;
+

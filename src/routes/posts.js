@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
@@ -90,6 +90,33 @@ router.post('/', async (req, res) => {
 
     await client.query('BEGIN');
 
+    const sellerResult = await client.query(
+      `
+      SELECT
+        u.id,
+        u.status,
+        COALESCE(p.user_type, 'external') AS user_type
+      FROM "user" u
+      LEFT JOIN profile p ON p.user_id = u.id
+      WHERE u.id = $1
+      `,
+      [author_user_id]
+    );
+
+    if (
+      sellerResult.rows.length === 0 ||
+      String(sellerResult.rows[0].status || '').toLowerCase() !== 'active'
+    ) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Usuario vendedor no encontrado o inactivo' });
+    }
+
+    if (sellerResult.rows[0].user_type !== 'student') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ message: 'Solo usuarios estudiantes pueden vender en Marketplace' });
+    }
+
+
     const { rows } = await client.query(
       `INSERT INTO post (category_id, author_user_id, title, slug, content, price, status, published_at)
        VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'draft'), $8)
@@ -153,3 +180,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+

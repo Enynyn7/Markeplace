@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPost, createPostImage, getCategories } from '../api'
 import { useAuth } from '../context/AuthContext'
@@ -26,6 +26,7 @@ function isValidImageUrl(value) {
 export default function CreateListing() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const canSell = user?.userType === 'student'
 
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
@@ -60,6 +61,7 @@ export default function CreateListing() {
     const price = Number(form.price)
     return Boolean(
       user?.id &&
+      canSell &&
       form.title.trim() &&
       form.categoryId &&
       form.price !== '' &&
@@ -67,7 +69,7 @@ export default function CreateListing() {
       price >= 0 &&
       isValidImageUrl(form.imageUrl.trim())
     )
-  }, [user, form])
+  }, [user, form, canSell])
 
   const onChange = (key) => (e) => {
     setError(null)
@@ -76,6 +78,12 @@ export default function CreateListing() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (!canSell) {
+      setError('Solo usuarios estudiantes pueden publicar en Marketplace')
+      return
+    }
+
     if (!canSubmit) return
 
     setLoading(true)
@@ -163,6 +171,12 @@ export default function CreateListing() {
             </div>
           )}
 
+          {!canSell && (
+            <div className="alert alert--error">
+              <span><Icon name="warning" className="w-4 h-4" /></span>
+              <span>Tu cuenta esta registrada como externa. Solo estudiantes pueden publicar en Marketplace.</span>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="form">
             <div className="input-group">
               <label htmlFor="listing-title">Título</label>
@@ -253,3 +267,5 @@ export default function CreateListing() {
     </div>
   )
 }
+
+
