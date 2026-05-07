@@ -94,9 +94,11 @@ pool.on('connect', () => {
 });
 
 module.exports = {
+  getClient: () => pool.connect(),
   query: (text, params) => pool.query(text, params),
   connect: () => pool.connect(),
   pool,
   ready,
 };
+
 

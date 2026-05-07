@@ -304,3 +304,33 @@ CREATE INDEX idx_category_slug        ON category(slug);
 CREATE INDEX idx_notification_user    ON notification(user_id);
 CREATE INDEX idx_purchase_order_user  ON purchase_order(user_id);
 
+
+-- =============================================================
+-- Marketplace ticket listing support
+-- Allows a marketplace post to be linked to one real lottery ticket.
+-- =============================================================
+ALTER TABLE post
+ADD COLUMN IF NOT EXISTS includes_ticket BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS ticket_id INTEGER;
+
+ALTER TABLE post
+DROP CONSTRAINT IF EXISTS post_ticket_id_fkey;
+
+ALTER TABLE post
+ADD CONSTRAINT post_ticket_id_fkey
+FOREIGN KEY (ticket_id) REFERENCES lottery_ticket(id)
+ON DELETE SET NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_post_ticket_unique
+ON post(ticket_id)
+WHERE ticket_id IS NOT NULL;
+
+-- =============================================================
+-- Ticket status support for Marketplace listings
+-- =============================================================
+ALTER TABLE lottery_ticket
+DROP CONSTRAINT IF EXISTS lottery_ticket_status_check;
+
+ALTER TABLE lottery_ticket
+ADD CONSTRAINT lottery_ticket_status_check
+CHECK (status IN ('available', 'listed', 'reserved', 'sold', 'cancelled'));
