@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createPost, createPostImage, getCategories } from '../api'
+import { createPost, createPostImage, getCategories, getTickets } from '../api'
 import { useAuth } from '../context/AuthContext'
 import Icon from '../components/Icon'
 
@@ -23,19 +23,30 @@ function isValidImageUrl(value) {
   }
 }
 
+function normalizeList(res) {
+  if (Array.isArray(res)) return res
+  if (Array.isArray(res?.data)) return res.data
+  if (Array.isArray(res?.value)) return res.value
+  return []
+}
+
 export default function CreateListing() {
   const navigate = useNavigate()
   const { user } = useAuth()
+
   const canSell = user?.userType === 'student'
 
   const [categories, setCategories] = useState([])
+  const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadingTickets, setLoadingTickets] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
 
   const [form, setForm] = useState({
     title: '',
     categoryId: '',
+    ticketId: '',
     price: '',
     imageUrl: '',
     description: '',
@@ -44,21 +55,64 @@ export default function CreateListing() {
 
   useEffect(() => {
     let alive = true
+
     getCategories()
       .then((res) => {
         if (!alive) return
-        const list = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : [])
-        setCategories(list)
+        setCategories(normalizeList(res))
       })
       .catch((err) => {
         if (!alive) return
         setError(err.message || 'No se pudieron cargar las categorías')
       })
+
     return () => { alive = false }
   }, [])
 
+  useEffect(() => {
+    if (!user?.id || !canSell) return
+
+    let alive = true
+    setLoadingTickets(true)
+
+    getTickets(user.id)
+      .then((res) => {
+        if (!alive) return
+        setTickets(normalizeList(res))
+      })
+      .catch((err) => {
+        if (!alive) return
+        setError(err.message || 'No se pudieron cargar tus boletos')
+      })
+      .finally(() => {
+        if (!alive) return
+        setLoadingTickets(false)
+      })
+
+    return () => { alive = false }
+  }, [user?.id, canSell])
+
+  const selectedCategory = useMemo(() => {
+    return categories.find((category) => String(category.id) === String(form.categoryId))
+  }, [categories, form.categoryId])
+
+  const isTicketListing = useMemo(() => {
+    const slug = String(selectedCategory?.slug || '').toLowerCase()
+    const name = String(selectedCategory?.name || '').toLowerCase()
+    return ['boleto', 'boletos', 'ticket', 'tickets'].includes(slug) ||
+      ['boleto', 'boletos', 'ticket', 'tickets'].includes(name)
+  }, [selectedCategory])
+
+  const availableTickets = useMemo(() => {
+    return tickets.filter((ticket) => {
+      const status = String(ticket.estado_boleto || ticket.status || '').toLowerCase()
+      return status === 'available' && !ticket.ticket_sale_id
+    })
+  }, [tickets])
+
   const canSubmit = useMemo(() => {
     const price = Number(form.price)
+
     return Boolean(
       user?.id &&
       canSell &&
@@ -67,23 +121,26 @@ export default function CreateListing() {
       form.price !== '' &&
       Number.isFinite(price) &&
       price >= 0 &&
+      (!isTicketListing || form.ticketId) &&
       isValidImageUrl(form.imageUrl.trim())
     )
-  }, [user, form, canSell])
+  }, [user?.id, canSell, form, isTicketListing])
 
   const onChange = (key) => (e) => {
     setError(null)
-    setForm((prev) => ({ ...prev, [key]: e.target.value }))
+    setSuccess(null)
+
+    const value = e.target.value
+
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+      ...(key === 'categoryId' ? { ticketId: '' } : {}),
+    }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    if (!canSell) {
-      setError('Solo usuarios estudiantes pueden publicar en Marketplace')
-      return
-    }
-
     if (!canSubmit) return
 
     setLoading(true)
@@ -91,33 +148,22 @@ export default function CreateListing() {
     setSuccess(null)
 
     try {
-      const now = Date.now()
-      const slugBase = slugify(form.title) || 'publicacion'
-      const categoryId = Number(form.categoryId)
-
-      if (!categoryId) {
-        throw new Error('Selecciona una categoría válida')
-      }
-
-      const price = Number(form.price)
-      if (form.price === '' || !Number.isFinite(price) || price < 0) {
-        throw new Error('Ingresa un precio valido')
-      }
-
       const imageUrl = form.imageUrl.trim()
-      if (!isValidImageUrl(imageUrl)) {
-        throw new Error('Ingresa una URL de imagen valida')
-      }
+      const now = Date.now()
+      const slugBase = slugify(form.title)
+      const slug = `${slugBase || 'publicacion'}-${now}`
 
       const payload = {
-        category_id: categoryId,
-        author_user_id: Number(user.id),
+        category_id: Number(form.categoryId),
+        author_user_id: user.id,
         title: form.title.trim(),
-        slug: `${slugBase}-${now}`,
-        content: form.description.trim() || null,
-        price,
+        slug,
+        content: form.description.trim(),
+        price: Number(form.price),
         status: form.status,
-        published_at: form.status === 'published' ? new Date().toISOString() : null,
+        published_at: new Date().toISOString(),
+        includes_ticket: isTicketListing,
+        ticket_id: isTicketListing ? Number(form.ticketId) : null,
       }
 
       const created = await createPost(payload)
@@ -131,6 +177,7 @@ export default function CreateListing() {
           sort_order: 0,
         })
       }
+
       setSuccess('Publicación creada correctamente')
       setTimeout(() => navigate('/app/marketplace'), 800)
     } catch (err) {
@@ -138,6 +185,40 @@ export default function CreateListing() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!canSell) {
+    return (
+      <div className="page" id="page-create-listing">
+        <div className="container">
+          <header className="header fade-in" style={{ marginBottom: 12, justifyContent: 'space-between' }}>
+            <button className="header__back" onClick={() => navigate('/app/marketplace')} aria-label="Volver">
+              <Icon name="chevron-left" className="w-5 h-5" />
+            </button>
+            <h1 className="header__title">Publicar en Marketplace</h1>
+            <div style={{ width: 40 }} />
+          </header>
+
+          <div className="card fade-in">
+            <div className="card__header">
+              <h2 className="card__title">Acceso restringido</h2>
+            </div>
+
+            <p style={{ color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+              Solo los estudiantes pueden publicar productos o boletos en Marketplace.
+            </p>
+
+            <button
+              type="button"
+              className="btn btn--orange btn--block"
+              onClick={() => navigate('/app/marketplace')}
+            >
+              Volver a Marketplace
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -154,111 +235,129 @@ export default function CreateListing() {
         <div className="card fade-in">
           <div className="card__header">
             <h2 className="card__title">Nueva publicación</h2>
-            <p className="card__subtitle">Este formulario usa el endpoint real `POST /posts`.</p>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginTop: 4 }}>
+              Si eliges la categoría Boleto, deberás seleccionar uno de tus boletos disponibles.
+            </p>
           </div>
 
           {error && (
-            <div className="alert alert--error">
-              <span><Icon name="warning" className="w-4 h-4" /></span>
-              <span>{error}</span>
+            <div style={{ color: 'var(--color-red)', marginBottom: 12, fontSize: '0.9rem' }}>
+              {error}
             </div>
           )}
 
           {success && (
-            <div className="alert alert--success">
-              <span><Icon name="check" className="w-4 h-4" /></span>
-              <span>{success}</span>
+            <div style={{ color: 'var(--color-green)', marginBottom: 12, fontSize: '0.9rem' }}>
+              {success}
             </div>
           )}
 
-          {!canSell && (
-            <div className="alert alert--error">
-              <span><Icon name="warning" className="w-4 h-4" /></span>
-              <span>Tu cuenta esta registrada como externa. Solo estudiantes pueden publicar en Marketplace.</span>
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="form">
-            <div className="input-group">
-              <label htmlFor="listing-title">Título</label>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label">Título</label>
               <input
-                id="listing-title"
                 className="input"
                 value={form.title}
                 onChange={onChange('title')}
-                placeholder="Ej: Servicio de diseño"
-                required
+                placeholder="Ej. Boleto Gran Sorteo"
               />
             </div>
 
-            <div className="input-group">
-              <label htmlFor="listing-category">Categoría</label>
+            <div className="form-group">
+              <label className="form-label">Categoría</label>
               <select
-                id="listing-category"
                 className="input"
                 value={form.categoryId}
                 onChange={onChange('categoryId')}
-                required
               >
-                <option value="">Selecciona categoría</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                <option value="">Selecciona una categoría</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
                 ))}
               </select>
             </div>
 
-            <div className="input-group">
-              <label htmlFor="listing-price">Precio</label>
+            {isTicketListing && (
+              <div className="form-group">
+                <label className="form-label">Boleto disponible</label>
+                <select
+                  className="input"
+                  value={form.ticketId}
+                  onChange={onChange('ticketId')}
+                  disabled={loadingTickets}
+                >
+                  <option value="">
+                    {loadingTickets ? 'Cargando boletos...' : 'Selecciona un boleto'}
+                  </option>
+                  {availableTickets.map((ticket) => (
+                    <option key={ticket.ticket_id || ticket.id} value={ticket.ticket_id || ticket.id}>
+                      {(ticket.folio || ticket.subject || `Boleto #${ticket.ticket_id || ticket.id}`)} — {ticket.description || 'Sin descripción'}
+                    </option>
+                  ))}
+                </select>
+
+                {!loadingTickets && availableTickets.length === 0 && (
+                  <p style={{ color: 'var(--color-red)', fontSize: '0.8125rem', marginTop: 6 }}>
+                    No tienes boletos disponibles para publicar.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Precio</label>
               <input
-                id="listing-price"
                 className="input"
                 type="number"
-                step="0.01"
                 min="0"
+                step="0.01"
                 value={form.price}
                 onChange={onChange('price')}
-                placeholder="Ej: 99.99"
-                required
+                placeholder="Ej. 150"
               />
             </div>
 
-            <div className="input-group">
-              <label htmlFor="listing-image-url">Imagen por URL</label>
+            <div className="form-group">
+              <label className="form-label">Imagen por URL</label>
               <input
-                id="listing-image-url"
                 className="input"
-                type="url"
                 value={form.imageUrl}
                 onChange={onChange('imageUrl')}
-                placeholder="https://ejemplo.com/imagen.jpg"
+                placeholder="https://picsum.photos/400/300"
               />
               {form.imageUrl && isValidImageUrl(form.imageUrl.trim()) && (
-                <div className="product-detail__image-wrapper" style={{ marginTop: 10, marginBottom: 0 }}>
-                  <img src={form.imageUrl.trim()} alt="Vista previa" />
-                </div>
+                <img
+                  src={form.imageUrl.trim()}
+                  alt="Vista previa"
+                  style={{
+                    width: '100%',
+                    maxHeight: 180,
+                    objectFit: 'cover',
+                    borderRadius: 12,
+                    marginTop: 10,
+                  }}
+                />
               )}
             </div>
 
-            <div className="input-group">
-              <label htmlFor="listing-status">Estado</label>
-              <select id="listing-status" className="input" value={form.status} onChange={onChange('status')}>
-                <option value="published">Publicado</option>
-                <option value="draft">Borrador</option>
-              </select>
-            </div>
-
-            <div className="input-group">
-              <label htmlFor="listing-description">Descripción</label>
+            <div className="form-group">
+              <label className="form-label">Descripción</label>
               <textarea
-                id="listing-description"
-                className="textarea"
-                rows={4}
+                className="input"
+                rows="4"
                 value={form.description}
                 onChange={onChange('description')}
-                placeholder="Describe tu producto o servicio"
+                placeholder="Describe lo que estás vendiendo"
               />
             </div>
 
-            <button type="submit" className="btn btn--green btn--block" disabled={!canSubmit || loading}>
+            <button
+              type="submit"
+              className="btn btn--orange btn--block"
+              disabled={!canSubmit || loading}
+            >
               {loading ? 'Publicando...' : 'Publicar'}
             </button>
           </form>
@@ -267,5 +366,3 @@ export default function CreateListing() {
     </div>
   )
 }
-
-
