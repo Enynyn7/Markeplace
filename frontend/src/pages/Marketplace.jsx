@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { getPosts, getCategories } from '../api'
 import Loader from '../components/Loader'
 import TicketCard from '../components/TicketCard'
@@ -33,7 +33,9 @@ export default function Marketplace() {
       const parsedPosts = postsResult.data !== undefined ? postsResult.data : postsResult
       const parsedCategories = categoriesResult.data !== undefined ? categoriesResult.data : categoriesResult
 
-      setPosts(Array.isArray(parsedPosts) ? parsedPosts : [parsedPosts])
+      const safePosts = Array.isArray(parsedPosts) ? parsedPosts : [parsedPosts]
+      const sortedPosts = safePosts.sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
+      setPosts(sortedPosts)
       setCategories(Array.isArray(parsedCategories) ? parsedCategories : [parsedCategories])
     } catch (err) {
       setError(err.message)
@@ -73,6 +75,13 @@ export default function Marketplace() {
           <div>
             <h1 className="header__title">Marketplace</h1>
           </div>
+          <button
+            type="button"
+            className="btn btn--orange"
+            onClick={fetchMarketplaceData}
+          >
+            Refrescar
+          </button>
         </header>
 
         <div className="market-layout fade-in" style={{ display: 'grid', gap: '16px' }}>
@@ -147,3 +156,5 @@ export default function Marketplace() {
     </div>
   )
 }
+
+
