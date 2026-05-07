@@ -37,7 +37,9 @@ async function getLinkedItems(client, purchaseOrderId) {
        p.id AS post_id,
        p.author_user_id,
        p.title AS post_title,
-       p.price AS post_price
+       p.price AS post_price,
+       p.includes_ticket,
+       p.ticket_id
      FROM purchase_item pi
      LEFT JOIN post p ON p.slug = pi.sku OR p.id::text = pi.sku
      WHERE pi.purchase_order_id = $1
@@ -66,6 +68,49 @@ async function deleteLinkedPosts(client, items) {
       'DELETE FROM post WHERE slug = $1 OR id::text = $1',
       [sku]
     );
+  }
+}
+async function completeLinkedTickets(client, order, items) {
+  for (const item of items) {
+    if (!item.ticket_id) continue;
+
+    const amount = toMoney(item.line_total || item.unit_price || item.post_price || 0);
+
+    await client.query(
+      `
+      UPDATE lottery_ticket
+      SET status = 'sold',
+          updated_at = NOW()
+      WHERE id = $1
+      `,
+      [item.ticket_id]
+    );
+
+    const { rows: existingSale } = await client.query(
+      'SELECT id FROM ticket_sale WHERE ticket_id = $1 LIMIT 1',
+      [item.ticket_id]
+    );
+
+    if (existingSale.length === 0) {
+      await client.query(
+        `
+        INSERT INTO ticket_sale (
+          ticket_id,
+          buyer_user_id,
+          price,
+          currency,
+          status
+        )
+        VALUES ($1, $2, $3, COALESCE($4, 'MXN'), 'completed')
+        `,
+        [
+          item.ticket_id,
+          order.user_id,
+          Math.abs(amount),
+          order.currency
+        ]
+      );
+    }
   }
 }
 
@@ -259,6 +304,7 @@ router.put('/:id', async (req, res) => {
     if (willComplete) {
       const items = await getLinkedItems(client, updatedOrder.id);
       await recordCompletedOrderMovements(client, updatedOrder, items);
+      await completeLinkedTickets(client, updatedOrder, items);
       await deleteLinkedPosts(client, items);
     }
 
@@ -293,3 +339,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+

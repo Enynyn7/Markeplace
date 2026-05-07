@@ -2,45 +2,122 @@
 const router = express.Router();
 const db = require('../config/db');
 
-async function getAccountId(client, userId) {
-  const { rows } = await client.query(
-    'SELECT id FROM financial_account WHERE user_id = $1 ORDER BY id LIMIT 1',
-    [userId]
-  );
-
-  if (rows.length > 0) return rows[0].id;
-
-  const { rows: created } = await client.query(
-    `INSERT INTO financial_account (user_id, account_type, currency, balance)
-     VALUES ($1, 'standard', 'MXN', 0.00)
-     RETURNING id`,
-    [userId]
-  );
-
-  return created[0].id;
+function normalizeBoolean(value) {
+  return value === true || value === 'true' || value === 1 || value === '1';
 }
 
-function normalizeTicketId(body) {
-  return body.ticket_id || body.ticketId || body.lottery_ticket_id || body.selectedTicketId || null;
+function normalizePrice(value) {
+  const price = Number(value || 0);
+  return Number.isFinite(price) && price >= 0 ? price : 0;
+}
+
+async function getUserAccess(client, userId) {
+  const { rows } = await client.query(
+    `
+    SELECT
+      u.id,
+      u.email,
+      u.status,
+      r.name AS role_name,
+      p.user_type,
+      p.student_id,
+      p.scholarship_percent
+    FROM "user" u
+    LEFT JOIN role r ON r.id = u.role_id
+    LEFT JOIN profile p ON p.user_id = u.id
+    WHERE u.id = $1
+    `,
+    [userId]
+  );
+
+  return rows[0] || null;
+}
+
+function canSell(user) {
+  const role = String(user?.role_name || '').toLowerCase();
+  const userType = String(user?.user_type || '').toLowerCase();
+
+  return userType === 'student' || role === 'admin' || role === 'staff';
+}
+
+async function buildPostResponse(client, postId) {
+  const { rows } = await client.query(
+    `
+    SELECT
+      p.*,
+      c.name AS category_name,
+      c.slug AS category_slug,
+      u.email AS author_email,
+      pr.first_name AS author_first_name,
+      pr.last_name AS author_last_name,
+      lt.subject AS ticket_folio,
+      lt.description AS ticket_description,
+      lt.status AS ticket_status,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', pi.id,
+            'url', pi.url,
+            'alt_text', pi.alt_text,
+            'sort_order', pi.sort_order
+          )
+          ORDER BY pi.sort_order, pi.id
+        ) FILTER (WHERE pi.id IS NOT NULL),
+        '[]'
+      ) AS images
+    FROM post p
+    LEFT JOIN category c ON c.id = p.category_id
+    LEFT JOIN "user" u ON u.id = p.author_user_id
+    LEFT JOIN profile pr ON pr.user_id = p.author_user_id
+    LEFT JOIN lottery_ticket lt ON lt.id = p.ticket_id
+    LEFT JOIN post_image pi ON pi.post_id = p.id
+    WHERE p.id = $1
+    GROUP BY p.id, c.id, u.id, pr.id, lt.id
+    `,
+    [postId]
+  );
+
+  return rows[0] || null;
 }
 
 router.get('/', async (req, res) => {
   try {
-    const { rows } = await db.query(`
+    const { category_id, author_user_id, status } = req.query;
+
+    const conditions = [];
+    const params = [];
+
+    if (category_id) {
+      params.push(category_id);
+      conditions.push(`p.category_id = $${params.length}`);
+    }
+
+    if (author_user_id) {
+      params.push(author_user_id);
+      conditions.push(`p.author_user_id = $${params.length}`);
+    }
+
+    if (status) {
+      params.push(status);
+      conditions.push(`p.status = $${params.length}`);
+    } else {
+      conditions.push(`p.status = 'published'`);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const { rows } = await db.query(
+      `
       SELECT
         p.*,
         c.name AS category_name,
         c.slug AS category_slug,
-        CASE
-          WHEN lt.id IS NULL THEN NULL
-          ELSE json_build_object(
-            'ticket_id', lt.id,
-            'folio', lt.subject,
-            'description', lt.description,
-            'status', lt.status,
-            'event_id', lt.event_id
-          )
-        END AS ticket,
+        u.email AS author_email,
+        pr.first_name AS author_first_name,
+        pr.last_name AS author_last_name,
+        lt.subject AS ticket_folio,
+        lt.description AS ticket_description,
+        lt.status AS ticket_status,
         COALESCE(
           json_agg(
             json_build_object(
@@ -48,17 +125,23 @@ router.get('/', async (req, res) => {
               'url', pi.url,
               'alt_text', pi.alt_text,
               'sort_order', pi.sort_order
-            ) ORDER BY pi.sort_order
+            )
+            ORDER BY pi.sort_order, pi.id
           ) FILTER (WHERE pi.id IS NOT NULL),
-          '[]'::json
+          '[]'
         ) AS images
       FROM post p
       LEFT JOIN category c ON c.id = p.category_id
+      LEFT JOIN "user" u ON u.id = p.author_user_id
+      LEFT JOIN profile pr ON pr.user_id = p.author_user_id
       LEFT JOIN lottery_ticket lt ON lt.id = p.ticket_id
-      LEFT JOIN post_image pi ON p.id = pi.post_id
-      GROUP BY p.id, c.id, lt.id
+      LEFT JOIN post_image pi ON pi.post_id = p.id
+      ${where}
+      GROUP BY p.id, c.id, u.id, pr.id, lt.id
       ORDER BY p.id DESC
-    `);
+      `,
+      params
+    );
 
     res.json(rows);
   } catch (err) {
@@ -69,45 +152,13 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const { rows } = await db.query(`
-      SELECT
-        p.*,
-        c.name AS category_name,
-        c.slug AS category_slug,
-        CASE
-          WHEN lt.id IS NULL THEN NULL
-          ELSE json_build_object(
-            'ticket_id', lt.id,
-            'folio', lt.subject,
-            'description', lt.description,
-            'status', lt.status,
-            'event_id', lt.event_id
-          )
-        END AS ticket,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', pi.id,
-              'url', pi.url,
-              'alt_text', pi.alt_text,
-              'sort_order', pi.sort_order
-            ) ORDER BY pi.sort_order
-          ) FILTER (WHERE pi.id IS NOT NULL),
-          '[]'::json
-        ) AS images
-      FROM post p
-      LEFT JOIN category c ON c.id = p.category_id
-      LEFT JOIN lottery_ticket lt ON lt.id = p.ticket_id
-      LEFT JOIN post_image pi ON p.id = pi.post_id
-      WHERE p.id = $1
-      GROUP BY p.id, c.id, lt.id
-    `, [req.params.id]);
+    const post = await buildPostResponse(db, req.params.id);
 
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Post no encontrado' });
+    if (!post) {
+      return res.status(404).json({ message: 'Publicación no encontrada' });
     }
 
-    res.json({ message: 'Detalle de producto obtenido correctamente', data: rows[0] });
+    res.json(post);
   } catch (err) {
     console.error('[posts/get/:id]', err);
     res.status(500).json({ error: err.message });
@@ -125,129 +176,85 @@ router.post('/', async (req, res) => {
       slug,
       content,
       price,
-      status,
-      published_at
+      status = 'published',
+      includes_ticket,
+      ticket_id
     } = req.body;
 
-    const rawTicketId = normalizeTicketId(req.body);
-    const ticketId = rawTicketId === null || rawTicketId === undefined || rawTicketId === '' ? null : Number(rawTicketId);
-    const normalizedPrice = price === undefined || price === null || price === '' ? null : Number(price);
-
-    if (!category_id) return res.status(400).json({ message: 'Selecciona una categoría válida' });
-    if (!author_user_id) return res.status(400).json({ message: 'Usuario autor requerido' });
-    if (!title || !String(title).trim()) return res.status(400).json({ message: 'Título requerido' });
-    if (!slug || !String(slug).trim()) return res.status(400).json({ message: 'Slug requerido' });
-
-    if (normalizedPrice === null || !Number.isFinite(normalizedPrice) || normalizedPrice < 0) {
-      return res.status(400).json({ message: 'Ingresa un precio válido' });
-    }
-
-    if (ticketId !== null && (!Number.isInteger(ticketId) || ticketId <= 0)) {
-      return res.status(400).json({ message: 'Selecciona un boleto válido' });
+    if (!category_id || !author_user_id || !title || !slug || !content) {
+      return res.status(400).json({
+        message: 'Faltan campos obligatorios: category_id, author_user_id, title, slug y content'
+      });
     }
 
     await client.query('BEGIN');
 
-    const sellerResult = await client.query(
-      `
-      SELECT
-        u.id,
-        u.status,
-        r.name AS role_name,
-        p.user_type
-      FROM "user" u
-      LEFT JOIN role r ON r.id = u.role_id
-      LEFT JOIN profile p ON p.user_id = u.id
-      WHERE u.id = $1
-      `,
-      [author_user_id]
-    );
+    const author = await getUserAccess(client, author_user_id);
 
-    if (sellerResult.rows.length === 0) {
+    if (!author || String(author.status).toLowerCase() !== 'active') {
       await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'Usuario autor no encontrado' });
+      return res.status(404).json({ message: 'Usuario no encontrado o inactivo' });
     }
 
-    const seller = sellerResult.rows[0];
-
-    if (String(seller.status || '').toLowerCase() !== 'active') {
+    if (!canSell(author)) {
       await client.query('ROLLBACK');
-      return res.status(403).json({ message: 'El usuario autor no está activo' });
+      return res.status(403).json({
+        message: 'Solo los estudiantes pueden crear publicaciones de venta'
+      });
     }
 
-    if (seller.role_name === 'auditor') {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ message: 'El auditor solo puede consultar información' });
-    }
+    const shouldAttachTicket = normalizeBoolean(includes_ticket) || Boolean(ticket_id);
+    let finalTicketId = null;
 
-    if (seller.user_type !== 'student') {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ message: 'Solo los estudiantes pueden publicar en Marketplace' });
-    }
+    if (shouldAttachTicket) {
+      if (!ticket_id) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: 'Selecciona un boleto para esta publicación' });
+      }
 
-    const categoryResult = await client.query(
-      'SELECT id, name, slug FROM category WHERE id = $1',
-      [category_id]
-    );
-
-    if (categoryResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ message: 'Categoría no encontrada' });
-    }
-
-    const category = categoryResult.rows[0];
-    const categoryKey = String(category.slug || category.name || '').toLowerCase();
-    const isTicketPost = categoryKey.includes('boleto') || categoryKey.includes('ticket');
-
-    if (isTicketPost && !ticketId) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ message: 'Selecciona un boleto disponible para publicar' });
-    }
-
-    let linkedTicketId = null;
-
-    if (isTicketPost) {
-      const ticketResult = await client.query(
+      const { rows: ticketRows } = await client.query(
         `
         SELECT id, user_id, status, subject, description
         FROM lottery_ticket
         WHERE id = $1
         FOR UPDATE
         `,
-        [ticketId]
+        [ticket_id]
       );
 
-      if (ticketResult.rows.length === 0) {
+      if (ticketRows.length === 0) {
         await client.query('ROLLBACK');
         return res.status(404).json({ message: 'Boleto no encontrado' });
       }
 
-      const ticket = ticketResult.rows[0];
+      const ticket = ticketRows[0];
 
-      if (Number(ticket.user_id) !== Number(author_user_id)) {
+      const role = String(author.role_name || '').toLowerCase();
+
+      if (!['admin', 'staff'].includes(role) && String(ticket.user_id) !== String(author_user_id)) {
         await client.query('ROLLBACK');
-        return res.status(403).json({ message: 'No puedes publicar un boleto que no te pertenece' });
+        return res.status(403).json({ message: 'No puedes publicar boletos de otro usuario' });
       }
 
       if (String(ticket.status || '').toLowerCase() !== 'available') {
         await client.query('ROLLBACK');
-        return res.status(409).json({ message: 'Este boleto ya no está disponible para publicarse' });
+        return res.status(400).json({ message: 'Este boleto no está disponible' });
       }
 
-      const alreadyListed = await client.query(
+      const { rows: usedRows } = await client.query(
         'SELECT id FROM post WHERE ticket_id = $1 LIMIT 1',
-        [ticketId]
+        [ticket_id]
       );
 
-      if (alreadyListed.rows.length > 0) {
+      if (usedRows.length > 0) {
         await client.query('ROLLBACK');
-        return res.status(409).json({ message: 'Este boleto ya está ligado a una publicación' });
+        return res.status(400).json({ message: 'Este boleto ya está ligado a otra publicación' });
       }
 
-      linkedTicketId = ticket.id;
+      finalTicketId = Number(ticket_id);
     }
 
-    const postResult = await client.query(
+    const { rows } = await client.query(
       `
       INSERT INTO post (
         category_id,
@@ -261,7 +268,11 @@ router.post('/', async (req, res) => {
         includes_ticket,
         ticket_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 'draft'), $8, $9, $10)
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7,
+        CASE WHEN $7 = 'published' THEN NOW() ELSE NULL END,
+        $8, $9
+      )
       RETURNING *
       `,
       [
@@ -269,40 +280,44 @@ router.post('/', async (req, res) => {
         author_user_id,
         title,
         slug,
-        content || null,
-        normalizedPrice,
+        content,
+        normalizePrice(price),
         status,
-        published_at || null,
-        isTicketPost,
-        linkedTicketId
+        shouldAttachTicket,
+        finalTicketId
       ]
     );
 
-    if (isTicketPost && linkedTicketId) {
+    const post = rows[0];
+
+    if (finalTicketId) {
       await client.query(
         `
         UPDATE lottery_ticket
-        SET status = 'listed',
+        SET status = 'reserved',
             updated_at = NOW()
         WHERE id = $1
         `,
-        [linkedTicketId]
+        [finalTicketId]
       );
     }
 
-    const accountId = await getAccountId(client, author_user_id);
-
     await client.query(
       `
-      INSERT INTO transaction (user_id, financial_account_id, amount, currency, status, description)
-      VALUES ($1, $2, 0, 'MXN', 'completed', $3)
+      INSERT INTO transaction (user_id, amount, currency, status, description)
+      VALUES ($1, 0.00, 'MXN', 'completed', $2)
       `,
-      [author_user_id, accountId, `Publicación creada: ${title}`]
+      [author_user_id, `Publicacion creada: ${title}`]
     );
 
     await client.query('COMMIT');
 
-    res.status(201).json({ message: 'Post creado', data: postResult.rows[0] });
+    const responsePost = await buildPostResponse(db, post.id);
+
+    res.status(201).json({
+      message: finalTicketId ? 'Publicación creada con boleto' : 'Post creado',
+      data: responsePost || post
+    });
   } catch (err) {
     try {
       await client.query('ROLLBACK');
@@ -311,50 +326,9 @@ router.post('/', async (req, res) => {
     }
 
     console.error('[posts/post]', err);
-
-    if (err.code === '23505') {
-      return res.status(409).json({ message: 'Ya existe una publicación con ese slug o boleto' });
-    }
-
-    if (err.code === '22P02') {
-      return res.status(400).json({ message: 'Selecciona un boleto válido' });
-    }
-
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
-  }
-});
-
-router.put('/:id', async (req, res) => {
-  try {
-    const { category_id, title, slug, content, price, status, published_at } = req.body;
-
-    const { rows } = await db.query(
-      `
-      UPDATE post
-      SET category_id  = COALESCE($1, category_id),
-          title        = COALESCE($2, title),
-          slug         = COALESCE($3, slug),
-          content      = COALESCE($4, content),
-          price        = COALESCE($5, price),
-          status       = COALESCE($6, status),
-          published_at = COALESCE($7, published_at),
-          updated_at   = NOW()
-      WHERE id = $8
-      RETURNING *
-      `,
-      [category_id, title, slug, content, price, status, published_at, req.params.id]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Post no encontrado' });
-    }
-
-    res.json({ message: `Post ${req.params.id} actualizado`, data: rows[0] });
-  } catch (err) {
-    console.error('[posts/put]', err);
-    res.status(500).json({ error: err.message });
   }
 });
 
@@ -364,36 +338,42 @@ router.delete('/:id', async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    const postResult = await client.query(
+    const { rows } = await client.query(
       'SELECT id, ticket_id FROM post WHERE id = $1 FOR UPDATE',
       [req.params.id]
     );
 
-    if (postResult.rows.length === 0) {
+    if (rows.length === 0) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'Post no encontrado' });
+      return res.status(404).json({ message: 'Publicación no encontrada' });
     }
 
-    const post = postResult.rows[0];
+    const post = rows[0];
 
     await client.query('DELETE FROM post WHERE id = $1', [req.params.id]);
 
     if (post.ticket_id) {
-      await client.query(
-        `
-        UPDATE lottery_ticket
-        SET status = 'available',
-            updated_at = NOW()
-        WHERE id = $1
-          AND status = 'listed'
-        `,
+      const { rows: saleRows } = await client.query(
+        'SELECT id FROM ticket_sale WHERE ticket_id = $1 LIMIT 1',
         [post.ticket_id]
       );
+
+      if (saleRows.length === 0) {
+        await client.query(
+          `
+          UPDATE lottery_ticket
+          SET status = 'available',
+              updated_at = NOW()
+          WHERE id = $1 AND status = 'reserved'
+          `,
+          [post.ticket_id]
+        );
+      }
     }
 
     await client.query('COMMIT');
 
-    res.json({ message: `Post ${req.params.id} eliminado` });
+    res.json({ message: `Publicación ${req.params.id} eliminada` });
   } catch (err) {
     try {
       await client.query('ROLLBACK');
@@ -401,7 +381,6 @@ router.delete('/:id', async (req, res) => {
       console.error('[posts/delete rollback]', rollbackErr.message);
     }
 
-    console.error('[posts/delete]', err);
     res.status(500).json({ error: err.message });
   } finally {
     client.release();
@@ -409,6 +388,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
-
-
