@@ -32,6 +32,10 @@ const ready = pool.query(`
     ADD CONSTRAINT profile_scholarship_percent_check
     CHECK (scholarship_percent >= 0 AND scholarship_percent <= 100);
 
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_student_id_unique
+    ON profile(student_id)
+    WHERE student_id IS NOT NULL;
+
   UPDATE category
      SET name = 'Producto',
          slug = 'producto',
@@ -84,6 +88,15 @@ const ready = pool.query(`
        FROM financial_account fa
       WHERE fa.user_id = u.id
    );
+
+  INSERT INTO event (name, description, event_date, location, capacity, status)
+  SELECT 'Sorteo General UDLAP',
+         'Evento base del sistema para boletos estudiantiles',
+         '2099-12-31 00:00:00',
+         'UDLAP Campus',
+         99999,
+         'upcoming'
+  WHERE NOT EXISTS (SELECT 1 FROM event LIMIT 1);
 `).catch((err) => {
   console.error('No se pudo verificar la compatibilidad del esquema:', err.message);
   throw err;
