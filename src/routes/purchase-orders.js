@@ -193,19 +193,11 @@ router.get('/:id', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const client = await db.connect();
-
   try {
     const { user_id, status, total_amount, currency } = req.body;
 
     if (!user_id || total_amount === undefined || total_amount === null) {
       return res.status(400).json({ message: 'Faltan campos obligatorios: user_id y total_amount' });
-    }
-
-    const orderAmount = toMoney(total_amount);
-
-    if (orderAmount <= 0) {
-      return res.status(400).json({ message: 'El total de la orden debe ser mayor a 0' });
     }
 
     if (isConfirmedStatus(status)) {
@@ -214,44 +206,16 @@ router.post('/', async (req, res) => {
       });
     }
 
-    await client.query('BEGIN');
-
-    const buyerAccount = await getAccount(client, user_id);
-
-    await client.query(
-      'SELECT id FROM financial_account WHERE id = $1 FOR UPDATE',
-      [buyerAccount.id]
-    );
-
-    const availableBalance = toMoney(buyerAccount.balance);
-
-    if (availableBalance < orderAmount) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        message: `Saldo insuficiente. Saldo actual: $${availableBalance.toFixed(2)}, total de compra: $${orderAmount.toFixed(2)}`
-      });
-    }
-
-    const { rows } = await client.query(
+    const { rows } = await db.query(
       `INSERT INTO purchase_order (user_id, status, total_amount, currency)
        VALUES ($1, COALESCE($2, 'pending'), $3, COALESCE($4, 'MXN'))
        RETURNING *`,
-      [user_id, status, orderAmount, currency]
+      [user_id, status, total_amount, currency]
     );
-
-    await client.query('COMMIT');
 
     res.status(201).json({ message: 'Orden creada', data: rows[0] });
   } catch (err) {
-    try {
-      await client.query('ROLLBACK');
-    } catch (rollbackErr) {
-      console.error('Rollback failed:', rollbackErr.message);
-    }
-
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 });
 
@@ -375,5 +339,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
 
