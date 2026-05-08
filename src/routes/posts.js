@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
@@ -269,9 +269,16 @@ router.post('/', async (req, res) => {
         ticket_id
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7,
-        CASE WHEN $7 = 'published' THEN NOW() ELSE NULL END,
-        $8, $9
+        $1::integer,
+        $2::integer,
+        $3::text,
+        $4::text,
+        $5::text,
+        $6::numeric,
+        $7::text,
+        CASE WHEN $7::text = 'published' THEN NOW() ELSE NULL::timestamp END,
+        $8::boolean,
+        $9::integer
       )
       RETURNING *
       `,
@@ -294,7 +301,7 @@ router.post('/', async (req, res) => {
       await client.query(
         `
         UPDATE lottery_ticket
-        SET status = 'reserved',
+        SET status = 'listed',
             updated_at = NOW()
         WHERE id = $1
         `,
@@ -364,7 +371,7 @@ router.delete('/:id', async (req, res) => {
           UPDATE lottery_ticket
           SET status = 'available',
               updated_at = NOW()
-          WHERE id = $1 AND status = 'reserved'
+          WHERE id = $1 AND status IN ('listed', 'reserved')
           `,
           [post.ticket_id]
         );

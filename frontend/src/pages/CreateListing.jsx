@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createPost, createPostImage, getCategories, getTickets } from '../api'
 import { useAuth } from '../context/AuthContext'
@@ -47,6 +47,7 @@ export default function CreateListing() {
     title: '',
     categoryId: '',
     ticketId: '',
+    includesTicket: false,
     price: '',
     imageUrl: '',
     description: '',
@@ -91,18 +92,6 @@ export default function CreateListing() {
 
     return () => { alive = false }
   }, [user?.id, canSell])
-
-  const selectedCategory = useMemo(() => {
-    return categories.find((category) => String(category.id) === String(form.categoryId))
-  }, [categories, form.categoryId])
-
-  const isTicketListing = useMemo(() => {
-    const slug = String(selectedCategory?.slug || '').toLowerCase()
-    const name = String(selectedCategory?.name || '').toLowerCase()
-    return ['boleto', 'boletos', 'ticket', 'tickets'].includes(slug) ||
-      ['boleto', 'boletos', 'ticket', 'tickets'].includes(name)
-  }, [selectedCategory])
-
   const availableTickets = useMemo(() => {
     return tickets.filter((ticket) => {
       const status = String(ticket.estado_boleto || ticket.status || '').toLowerCase()
@@ -121,10 +110,10 @@ export default function CreateListing() {
       form.price !== '' &&
       Number.isFinite(price) &&
       price >= 0 &&
-      (!isTicketListing || form.ticketId) &&
+      (!form.includesTicket || form.ticketId) &&
       isValidImageUrl(form.imageUrl.trim())
     )
-  }, [user?.id, canSell, form, isTicketListing])
+  }, [user?.id, canSell, form])
 
   const onChange = (key) => (e) => {
     setError(null)
@@ -162,8 +151,8 @@ export default function CreateListing() {
         price: Number(form.price),
         status: form.status,
         published_at: new Date().toISOString(),
-        includes_ticket: isTicketListing,
-        ticket_id: isTicketListing ? Number(form.ticketId) : null,
+        includes_ticket: Boolean(form.includesTicket),
+        ticket_id: form.includesTicket ? Number(form.ticketId) : null,
       }
 
       const created = await createPost(payload)
@@ -236,7 +225,7 @@ export default function CreateListing() {
           <div className="card__header">
             <h2 className="card__title">Nueva publicación</h2>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginTop: 4 }}>
-              Si eliges la categoría Boleto, deberás seleccionar uno de tus boletos disponibles.
+              Puedes publicar productos normales o anexar uno de tus boletos disponibles a la publicación.
             </p>
           </div>
 
@@ -279,7 +268,36 @@ export default function CreateListing() {
               </select>
             </div>
 
-            {isTicketListing && (
+            <div className="form-group">
+              <label
+                className="input"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  cursor: 'pointer'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={Boolean(form.includesTicket)}
+                  onChange={(e) => {
+                    setError(null)
+                    setSuccess(null)
+
+                    const checked = e.target.checked
+
+                    setForm((prev) => ({
+                      ...prev,
+                      includesTicket: checked,
+                      ticketId: checked ? prev.ticketId : ''
+                    }))
+                  }}
+                />
+                <span>Esta publicación incluye boleto</span>
+              </label>
+            </div>
+            {form.includesTicket && (
               <div className="form-group">
                 <label className="form-label">Boleto disponible</label>
                 <select
