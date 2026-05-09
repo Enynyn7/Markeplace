@@ -132,11 +132,7 @@ export default function CreateListing() {
 
     const value = e.target.value
 
-    setForm((prev) => ({
-      ...prev,
-      [key]: value,
-      ...(key === 'categoryId' ? { ticketId: '' } : {}),
-    }))
+    setForm((prev) => ({ ...prev, [key]: value }))
   }
 
   const handleSubmit = async (e) => {
@@ -271,11 +267,13 @@ export default function CreateListing() {
                 onChange={onChange('categoryId')}
               >
                 <option value="">Selecciona una categoría</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
+                {categories
+                  .filter((cat) => String(cat.slug || cat.name || '').toLowerCase() !== 'boleto')
+                  .map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
               </select>
             </div>
 

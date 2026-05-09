@@ -14,6 +14,49 @@ function inferUserTypeFromEmail(email) {
   return normalizedEmail.endsWith('@udlap.mx') ? 'student' : 'external'
 }
 
+async function createStudentTickets(client, userId, count = 30) {
+  const { rows: events } = await client.query(
+    'SELECT id FROM event ORDER BY id LIMIT 1'
+  );
+
+  if (events.length === 0) {
+    throw new Error('No hay eventos registrados en el sistema para asignar boletos');
+  }
+
+  const eventId = events[0].id;
+
+  const values = [];
+  const placeholders = [];
+
+  for (let i = 1; i <= count; i++) {
+    const folio = `UDLAP-${userId}-${String(i).padStart(3, '0')}`;
+    const base = (i - 1) * 3;
+    placeholders.push(`($${base + 1}, $${base + 2}, $${base + 3})`);
+    values.push(userId, eventId, folio);
+  }
+
+  await client.query(
+    `INSERT INTO lottery_ticket (user_id, event_id, subject)
+     VALUES ${placeholders.join(', ')}`,
+    values
+  );
+}
+
+async function generateUniqueStudentId(client) {
+  let candidate;
+  let exists = true;
+  while (exists) {
+    const digits = String(Math.floor(Math.random() * 100_000_000)).padStart(8, '0');
+    candidate = `UDLAP${digits}`;
+    const { rows } = await client.query(
+      'SELECT 1 FROM profile WHERE student_id = $1',
+      [candidate]
+    );
+    exists = rows.length > 0;
+  }
+  return candidate;
+}
+
 function normalizeScholarship(value, userType) {
   if (userType !== 'student') return 0;
 
@@ -130,15 +173,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Tipo de usuario inválido. Usa student o external.' });
     }
 
-    const normalizedScholarship = normalizeScholarship(scholarshipPercent, normalizedUserType);
-
-    if (normalizedScholarship === null) {
-      return res.status(400).json({ message: 'La beca debe estar entre 0 y 100.' });
-    }
-
-    const normalizedStudentId = normalizedUserType === 'student'
-      ? String(studentId || '').trim() || null
-      : null;
+    const normalizedScholarship = normalizedUserType === 'student' ? 50 : 0;
 
     const { rows: existing } = await db.query(
       'SELECT id FROM "user" WHERE email = $1',
@@ -158,6 +193,10 @@ router.post('/register', async (req, res) => {
 
     try {
       await client.query('BEGIN');
+
+      const normalizedStudentId = normalizedUserType === 'student'
+        ? await generateUniqueStudentId(client)
+        : null;
 
       const { rows: newUser } = await client.query(
         `INSERT INTO "user" (role_id, email, password_hash, status)
@@ -196,6 +235,10 @@ router.post('/register', async (req, res) => {
         [createdUser.id]
       );
 
+      if (normalizedUserType === 'student') {
+        await createStudentTickets(client, createdUser.id);
+      }
+
       await client.query('COMMIT');
 
       res.status(201).json({
@@ -214,6 +257,7 @@ router.post('/register', async (req, res) => {
           userType: normalizedUserType,
           studentId: normalizedStudentId,
           scholarshipPercent: normalizedScholarship,
+          ticketsAsignados: normalizedUserType === 'student' ? 30 : 0,
         },
       });
     } catch (txErr) {
